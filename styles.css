@@ -1,4 +1,4 @@
-/* Sets all the text color to red! */
-body {
+
+.pandoc-plugin-error {
     color: red;
 }

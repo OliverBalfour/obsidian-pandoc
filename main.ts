@@ -1,26 +1,26 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { lookpath } from 'lookpath';
 
-interface MyPluginSettings {
-	mySetting: string;
+interface PandocPluginSettings {
+	showCLICommands: boolean;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: PandocPluginSettings = {
+	showCLICommands: false,
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class PandocPlugin extends Plugin {
+	settings: PandocPluginSettings;
+	programs = ['pandoc', 'latex', 'node'];
+	features: { [key: string]: string | undefined } = {};
 
 	async onload() {
-		console.log('loading plugin');
+		console.log('Loading Pandoc plugin');
 
 		await this.loadSettings();
 
-		this.addRibbonIcon('dice', 'Sample Plugin', () => {
-			new Notice('This is a notice!');
-		});
-
-		this.addStatusBarItem().setText('Status Bar Text');
+		// Check if Pandoc, LaTeX, etc. are installed and in the PATH
+		await this.createBinaryMap();
 
 		this.addCommand({
 			id: 'open-sample-modal',
@@ -40,21 +40,24 @@ export default class MyPlugin extends Plugin {
 			}
 		});
 
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new PandocPluginSettingTab(this.app, this));
 
 		this.registerCodeMirror((cm: CodeMirror.Editor) => {
 			console.log('codemirror', cm);
 		});
+	}
 
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+	async createBinaryMap() {
+		// Note: lookpath scans the entire PATH once, this is not efficient
+		// We're also not coalescing promises via Promise.all
+		for (const binary of this.programs) {
+			this.features[binary] = await lookpath(binary);
+		}
+		console.log(this.features);
 	}
 
 	onunload() {
-		console.log('unloading plugin');
+		console.log('Unloading Pandoc plugin');
 	}
 
 	async loadSettings() {
@@ -82,30 +85,43 @@ class SampleModal extends Modal {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class PandocPluginSettingTab extends PluginSettingTab {
+	plugin: PandocPlugin;
+	errorMessages: { [key: string]: string } = {
+		pandoc: "Pandoc is not installed or accessible on your PATH. This plugin's functionality will be limited.",
+		latex: "LaTeX is not installed or accessible on your PATH. Please install it if you want PDF exports via LaTeX.",
+		node: "Node.js is not installed or accessible on your PATH. Please install it if you want Pandoc CLI commands to be shown.",
+	}
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: PandocPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
-		let {containerEl} = this;
+		let { containerEl } = this;
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
+		containerEl.createEl('h3', {text: 'Pandoc Plugin'});
+
+		const createError = (text: string) =>
+			containerEl.createEl('p', { cls: 'pandoc-plugin-error', text });
+		
+		for (const binary of this.plugin.programs) {
+			const path = this.plugin.features[binary];
+			if (path === undefined) {
+				createError(this.errorMessages[binary]);
+			}
+		}
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue('')
+			.setName("Show CLI commands (not implemented)")
+			.setDesc("For Pandoc's command line interface")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showCLICommands)
 				.onChange(async (value) => {
-					console.log('Secret: ' + value);
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.showCLICommands = value;
 					await this.plugin.saveSettings();
 				}));
 	}
