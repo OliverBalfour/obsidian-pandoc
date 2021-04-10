@@ -1,9 +1,9 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, InputFormat } from './pandoc';
+import fontFace from './font-face';
 import * as fs from 'fs';
 import * as path from 'path';
-import { tmpdir } from 'os';
 
 interface PandocPluginSettings {
 	showCLICommands: boolean;
@@ -25,6 +25,7 @@ export default class PandocPlugin extends Plugin {
 		// Check if Pandoc, LaTeX, etc. are installed and in the PATH
 		await this.createBinaryMap();
 
+		// Register all of the command palette entries
 		this.registerCommands();
 
 		this.addSettingTab(new PandocPluginSettingTab(this.app, this));
@@ -33,13 +34,14 @@ export default class PandocPlugin extends Plugin {
 	registerCommands() {
 		for (let [prettyName, pandocFormat, extension] of outputFormats) {
 			if (pandocFormat === 'latex' && !this.features['latex']) continue;
+			const name = pandocFormat === 'html' ?
+				'Export as HTML (without Pandoc)' : 'Export as ' + prettyName;
 			this.addCommand({
-				id: 'pandoc-export-' + pandocFormat,
-				name: 'Export to ' + prettyName,
+				id: 'pandoc-export-' + pandocFormat, name,
 				checkCallback: (checking: boolean) => {
 					let leaf = this.app.workspace.activeLeaf;
 					if (!leaf) return false;
-					if (!this.features.pandoc) return false;
+					if (!this.features.pandoc && pandocFormat !== 'html') return false;
 					if (!this.currentFileCanBeExported()) return false;
 					if (!checking) {
 						this.startPandocExport(this.getCurrentFile(), extension);
@@ -80,7 +82,7 @@ export default class PandocPlugin extends Plugin {
 	}
 
 	async startPandocExport(inputFile: string, outputFormat: string) {
-		console.log(`Pandoc plugin: processing ${inputFile}`);
+		console.log(`Pandoc plugin: converting ${inputFile} to ${outputFormat}`);
 		console.log(this.app);  // TODO: remove
 
 		// Instead of using Pandoc to process the raw Markdown, we extract the HTML
@@ -89,59 +91,42 @@ export default class PandocPlugin extends Plugin {
 
 		try	{
 			// Put in preview mode to ensure the HTML is up to date
-			// TODO: should we revert back to the original mode after?
-			// TODO: this doesn't seem to update the HTML fast enough?
-			this.putCurrentWorkspaceInPreviewMode();
-			let html = this.currentWorkspaceContainer()
-				.querySelector('.markdown-preview-sizer.markdown-preview-section').innerHTML;
+			// TODO: it seems like not everything is displayed in the HTML at once, because Pandoc produces documents that often miss different sections
+			await this.putCurrentWorkspaceInPreviewMode();
 
-			html = this.processHTML(html);
-
-			// Save as HTML file
-			// Rather than using a temp file in /tmp, we make a file in the vault so that
-			// embedded links will resolve correctly
-			// TODO: this just uses the base path - does it work for files inside folders?
-			// const tmpfile = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.fileBaseName(inputFile) + '.html');
-			// await fs.promises.writeFile(tmpfile, html);
-			// console.log("wrote html to file")
-
-			const AST = await this.pandocGetASTFromSTDIN(html, 'html');
-			console.log(AST);
-			const newAST = this.pandocFilterAST(AST);
+			// Extract HTML
+			const title = this.fileBaseName(inputFile);
 			const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-			await this.pandocPutAST(outputFile, newAST, this.fileBaseName(inputFile));
+			const html = this.standaloneHTML(this.processHTML(
+				this.currentWorkspaceContainer()
+					.querySelector('.markdown-preview-sizer.markdown-preview-section').innerHTML
+			), title);
+
+			if (outputFormat === 'html') {
+				await fs.promises.writeFile(outputFile, html);
+			} else {
+				const AST = await this.pandocGetASTFromSTDIN(html, 'html');
+				console.log(AST);
+				const newAST = this.pandocFilterAST(AST);
+				await this.pandocPutAST(outputFile, newAST, title);
+			}
 
 			fs.stat(outputFile, (err: NodeJS.ErrnoException | null, stats: fs.Stats) => {
-				// TODO: mention the filename
-				if (stats.isFile()) new Notice('Successfully exported via Pandoc');
+				if (stats.isFile()) new Notice('Successfully exported via Pandoc to ' + outputFile);
 				else {
 					new Notice('Pandoc export silently failed');
 					console.error('Pandoc silently failed');
 				}
 			});
-			
-			// Delete temp file afterwards
-			// await fs.promises.unlink(tmpfile);
 		} catch (e) {
 			new Notice('Pandoc error: ' + e.toString());
 			console.error(e);
 		}
 	}
 
-	putCurrentWorkspaceInPreviewMode() {
-		const leaf = this.app.workspace.activeLeaf;
-		let state = leaf.getViewState()
-		state.state.mode = 'preview';
-		this.app.workspace.activeLeaf.setViewState(state);
-	}
-
-	currentWorkspaceContainer(): HTMLElement {
-		// The containerEl property of WorkspaceLeaf isn't actually exposed in the API
-		return (this.app.workspace.activeLeaf as any).containerEl;
-	}
-
 	processHTML(html: string): string {
 		// Replace `app://local/uri` links with plain `uri` links
+		// TODO: the MathJax fonts still use app://obsidian.md/... links, but
 		const regex = /"app:\/\/local\/([\w\-\.!~*'\(\)%]+)(\?\d+)?"/m;
 		let match = html.match(regex);
 		while (match) {
@@ -151,6 +136,25 @@ export default class PandocPlugin extends Plugin {
 			match = html.match(regex);
 		}
 		return html;
+	}
+
+	standaloneHTML(html: string, title: string): string {
+		// Wraps an HTML fragment in a proper document structure
+		//  and injects the page's CSS
+		let css = ' ' + Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join(' ');
+		// TODO: inject MathJax fonts without slow page load times
+		if (html.indexOf('jax="CHTML"') !== -1) css += ' ' + fontFace;
+		return `<!doctype html>\n` +
+			   `<html>\n` +
+			   `	<head>\n` +
+			   `		<title>${title}</title>\n` +
+			   `		<meta charset='utf-8'/>\n` +
+			   `		<style>\n${css}\n</style>\n` +
+			   `	</head>\n` +
+			   `	<body>\n` +
+			   `${html}\n` +
+			   `	</body>\n` +
+			   `</html>`;
 	}
 
 	fileBaseName(file: string): string {
@@ -180,6 +184,24 @@ export default class PandocPlugin extends Plugin {
 	async pandocPutAST(file: string, json: any, title: string) {
 		const serialised = JSON.stringify(json);
 		return await pandoc({ file: 'STDIN', format: 'json', contents: serialised, title }, { file });
+	}
+
+	async putCurrentWorkspaceInPreviewMode() {
+		const leaf = this.app.workspace.activeLeaf;
+		let state = leaf.getViewState();
+		if (state.state.mode === 'preview') return;
+		state.state.mode = 'preview';
+		await this.app.workspace.activeLeaf.setViewState(state);
+		// This doesn't seem to update the HTML fast enough, so we sleep for 1 second
+		// TODO: figure out how to listen for the relayout finishing
+		// For some notes, one second might not be enough
+		// Perhaps disable the command palette options when in edit mode?
+		await sleep(1000);
+	}
+
+	currentWorkspaceContainer(): HTMLElement {
+		// The containerEl property of WorkspaceLeaf isn't actually exposed in the API
+		return (this.app.workspace.activeLeaf as any).containerEl;
 	}
 
 	onunload() {
@@ -234,4 +256,8 @@ class PandocPluginSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 	}
+}
+
+function sleep(ms: number) {
+	return new Promise((resolve, _) => setTimeout(resolve, ms));
 }

@@ -62,18 +62,12 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
 
 	let pandoc: ChildProcess;
 	let result = '';
+	let error = '';
 
-
-	// const fileExtension = (file: string): string => path.extname(file).substring(1);
 	const fileBaseName = (file: string): string => path.basename(file, path.extname(file));
 
 	// Construct the Pandoc arguments list
 	let args: string[] = [];
-
-	// TODO: find the format if it's not specified?
-	// if (!input.format) {
-	// 	input.format = fileExtension(input.file) as InputFormat;
-	// }
 
 	// The title is needed for ePub and standalone HTML formats
 	const title = input.title ? input.title : fileBaseName(input.file);
@@ -117,11 +111,16 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
 		pandoc.stdout.on('data', (data: any) => {
 			result += data;
 		});
-		pandoc.stdout.on('end', () => {
-			resolve(stdout ? result : null);
-		});
 		pandoc.stderr.on('data', (err: any) => {
-			reject(new Error(err));
+			error += err;
+		});
+		pandoc.stdout.on('end', () => {
+			// TODO: need a way to handle warnings vs errors here and in the UI
+			if (error.length) {
+				reject(new Error(error));
+			} else {
+				resolve(stdout ? result : null);
+			}
 		});
 	}
 
