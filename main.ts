@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter, MarkdownRenderer, Component } from 'obsidian';
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, InputFormat } from './pandoc';
 import fontFace from './font-face';
@@ -86,22 +86,24 @@ export default class PandocPlugin extends Plugin {
 		console.log(`Pandoc plugin: converting ${inputFile} to ${outputFormat}`);
 		console.log(this.app);  // TODO: remove
 
-		// Instead of using Pandoc to process the raw Markdown, we extract the HTML
-		// preview, save it to a file, and then process that instead. This allows
-		// us to trivially deal with Obsidian specific Markdown syntax.
+		// Instead of using Pandoc to process the raw Markdown, we use Obsidian's
+		// internal markdown renderer, and process the HTML it generates instead.
+		// This allows us to trivially deal with Obsidian specific Markdown syntax.
+
+		const wrapper = document.createElement('div');
+		wrapper.style.display = 'hidden';
+		document.body.appendChild(wrapper);
+		// TODO: use this.app.workspace.activeLeaf.getDisplayText() or similar, this will be synchronous and include unsaved changes
+		const markdown = (await fs.promises.readFile(this.getCurrentFile())).toString();
+		await MarkdownRenderer.renderMarkdown(markdown, wrapper, this.fileBaseName(this.getCurrentFile()), {} as Component);
+		const renderedMarkdown = wrapper.innerHTML;
+		document.body.removeChild(wrapper);
 
 		try	{
-			// Put in preview mode to ensure the HTML is up to date
-			// TODO: it seems like not everything is displayed in the HTML at once, because Pandoc produces documents that often miss different sections
-			await this.putCurrentWorkspaceInPreviewMode();
-
 			// Extract HTML
 			const title = this.fileBaseName(inputFile);
 			const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-			const html = this.standaloneHTML(this.processHTML(
-				this.currentWorkspaceContainer()
-					.querySelector('.markdown-preview-sizer.markdown-preview-section').innerHTML
-			), title);
+			const html = this.standaloneHTML(this.processHTML(renderedMarkdown), title);
 
 			if (outputFormat === 'html') {
 				await fs.promises.writeFile(outputFile, html);
