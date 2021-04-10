@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { lookpath } from 'lookpath';
+import pandoc from './pandoc';
 
 interface PandocPluginSettings {
 	showCLICommands: boolean;
@@ -25,14 +26,16 @@ export default class PandocPlugin extends Plugin {
 		this.addCommand({
 			id: 'open-sample-modal',
 			name: 'Open Sample Modal',
-			// callback: () => {
-			// 	console.log('Simple Callback');
-			// },
 			checkCallback: (checking: boolean) => {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf) {
 					if (!checking) {
-						new SampleModal(this.app).open();
+						// new SampleModal(this.app).open();
+						pandoc({
+							file: '/home/oliver/zettelkasten/Obsidian Pandoc export.md'
+						}, {
+							file: '/home/oliver/zettelkasten/Obsidian Pandoc export.docx'
+						});
 					}
 					return true;
 				}
@@ -42,9 +45,9 @@ export default class PandocPlugin extends Plugin {
 
 		this.addSettingTab(new PandocPluginSettingTab(this.app, this));
 
-		this.registerCodeMirror((cm: CodeMirror.Editor) => {
-			console.log('codemirror', cm);
-		});
+		// this.registerCodeMirror((cm: CodeMirror.Editor) => {
+		// 	console.log('codemirror', cm);
+		// });
 	}
 
 	async createBinaryMap() {
@@ -53,7 +56,6 @@ export default class PandocPlugin extends Plugin {
 		for (const binary of this.programs) {
 			this.features[binary] = await lookpath(binary);
 		}
-		console.log(this.features);
 	}
 
 	onunload() {
