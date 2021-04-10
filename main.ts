@@ -1,8 +1,9 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { lookpath } from 'lookpath';
 import pandoc, { inputExtensions, outputFormats } from './pandoc';
-import { stat, Stats } from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
+import { tmpdir } from 'os';
 
 interface PandocPluginSettings {
 	showCLICommands: boolean;
@@ -11,7 +12,6 @@ interface PandocPluginSettings {
 const DEFAULT_SETTINGS: PandocPluginSettings = {
 	showCLICommands: false,
 }
-
 export default class PandocPlugin extends Plugin {
 	settings: PandocPluginSettings;
 	programs = ['pandoc', 'latex', 'node'];
@@ -81,9 +81,30 @@ export default class PandocPlugin extends Plugin {
 
 	async startPandocExport(inputFile: string, outputFormat: string) {
 		console.log(`Pandoc plugin: processing ${inputFile}`);
+		console.log(this.app);  // TODO: remove
+
+		// Instead of using Pandoc to process the raw Markdown, we extract the HTML
+		// preview, save it to a file, and then process that instead. This allows
+		// us to trivially deal with Obsidian specific Markdown syntax.
+
 		try	{
-			const dest = await this.pandocExport(inputFile, outputFormat);
-			stat(dest, (err: NodeJS.ErrnoException | null, stats: Stats) => {
+			// The containerEl property of WorkspaceLeaf isn't actually exposed in the API
+			// TODO: what happens if preview mode isn't active? Can we change to preview mode?
+			let html = (this.app.workspace.activeLeaf as any).containerEl
+				.querySelector('.markdown-preview-sizer.markdown-preview-section').innerHTML;
+
+			html = this.processHTML(html);
+
+			// Save as HTML file
+			// Rather than using a temp file in /tmp, we make a file in the vault so that
+			// embedded links will resolve correctly
+			// TODO: this just uses the base path - does it work for files inside folders?
+			const tmpfile = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.fileBaseName(inputFile) + '.html');
+			await fs.promises.writeFile(tmpfile, html);
+			console.log("wrote html to file")
+
+			const dest = await this.pandocExport(tmpfile, outputFormat);
+			fs.stat(dest, (err: NodeJS.ErrnoException | null, stats: fs.Stats) => {
 				// TODO: mention the filename
 				if (stats.isFile()) new Notice('Successfully exported via Pandoc');
 				else {
@@ -91,10 +112,31 @@ export default class PandocPlugin extends Plugin {
 					console.error('Pandoc silently failed');
 				}
 			});
+			
+			// Delete temp file afterwards
+			// TODO: why not just use STDIN instead?
+			await fs.promises.unlink(tmpfile);
 		} catch (e) {
 			new Notice('Pandoc error: ' + e.toString());
 			console.error(e);
 		}
+	}
+
+	processHTML(html: string): string {
+		// Replace `app://local/uri` links with plain `uri` links
+		const regex = /"app:\/\/local\/([\w\-\.!~*'\(\)%]+)(\?\d+)?"/m;
+		let match = html.match(regex);
+		while (match) {
+			// match = [entire match, encoded uri capture group, unused capture group, index: start of match]
+			// Replaces "app://local/uri" with "uri" (quotes included in both cases)
+			html = html.substring(0, match.index) + '"' + window.decodeURIComponent(match[1]) + '"' + html.substring(match.index + match[0].length);
+			match = html.match(regex);
+		}
+		return html;
+	}
+
+	fileBaseName(file: string): string {
+		return path.basename(file, path.extname(file));
 	}
 
 	async pandocExport(inputFile: string, outputFormat: string): Promise<string> {
@@ -102,8 +144,7 @@ export default class PandocPlugin extends Plugin {
 		console.log(AST);
 		const newAST = this.pandocFilterAST(AST);
 		const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-		const fileBaseName = (file: string): string => path.basename(file, path.extname(file));
-		await this.pandocPutAST(outputFile, newAST, fileBaseName(inputFile));
+		await this.pandocPutAST(outputFile, newAST, this.fileBaseName(inputFile));
 		return outputFile;
 	}
 
