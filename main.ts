@@ -1,6 +1,8 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { lookpath } from 'lookpath';
 import pandoc from './pandoc';
+import { stat, Stats } from 'fs';
+import { join } from 'path';
 
 interface PandocPluginSettings {
 	showCLICommands: boolean;
@@ -23,6 +25,16 @@ export default class PandocPlugin extends Plugin {
 		// Check if Pandoc, LaTeX, etc. are installed and in the PATH
 		await this.createBinaryMap();
 
+		this.registerCommands();
+
+		this.addSettingTab(new PandocPluginSettingTab(this.app, this));
+
+		this.registerCodeMirror((cm: CodeMirror.Editor) => {
+			console.log('codemirror', cm);
+		});
+	}
+
+	registerCommands() {
 		this.addCommand({
 			id: 'open-sample-modal',
 			name: 'Open Sample Modal',
@@ -31,19 +43,20 @@ export default class PandocPlugin extends Plugin {
 				if (leaf) {
 					if (!checking) {
 						// new SampleModal(this.app).open();
-						this.pandocExport('docx');
+						this.startPandocExport(this.getCurrentFile(), 'docx');
 					}
 					return true;
 				}
 				return false;
 			}
 		});
+	}
 
-		this.addSettingTab(new PandocPluginSettingTab(this.app, this));
-
-		// this.registerCodeMirror((cm: CodeMirror.Editor) => {
-		// 	console.log('codemirror', cm);
-		// });
+	getCurrentFile(): string {
+		const { basename, extension } = this.app.workspace.getActiveFile();
+		const filename = `${basename}.${extension}`;
+		const basepath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+		return join(basepath, filename);
 	}
 
 	async createBinaryMap() {
@@ -54,18 +67,50 @@ export default class PandocPlugin extends Plugin {
 		}
 	}
 
-	async pandocExport(format: string) {
-		let stuff;
+	async startPandocExport(inputFile: string, outputFormat: string) {
+		console.log(`Pandoc plugin: processing ${inputFile}`);
 		try	{
-			stuff = await pandoc({
-				file: '/home/oliver/zettelkasten/Obsidian Pandoc export.md'
-			}, {
-				file: '/home/oliver/zettelkasten/Obsidian Pandoc export.docx'
+			const dest = await this.pandocExport(inputFile, outputFormat);
+			stat(dest, (err: NodeJS.ErrnoException | null, stats: Stats) => {
+				if (stats.isFile()) new Notice('Successfully exported via Pandoc');
+				else {
+					new Notice('Pandoc export silently failed');
+					console.error('Pandoc silently failed');
+				}
 			});
 		} catch (e) {
 			new Notice('Pandoc error: ' + e.toString());
+			console.error(e);
 		}
-		console.log(stuff);
+	}
+
+	async pandocExport(inputFile: string, outputFormat: string): Promise<string> {
+		const AST = await this.pandocGetAST(inputFile);
+		console.log(AST);
+		const newAST = this.pandocFilterAST(AST);
+		const outputFile = this.replaceFileExtension(inputFile, outputFormat);
+		await this.pandocPutAST(outputFile, newAST);
+		return outputFile;
+	}
+
+	pandocFilterAST(ast: any): any {
+		return ast;
+	}
+
+	replaceFileExtension(file: string, ext: string): string {
+		// Source: https://stackoverflow.com/a/5953384/4642943
+		let pos = file.lastIndexOf('.');
+		return file.substr(0, pos < 0 ? file.length : pos) + '.' + ext;
+	}
+
+	async pandocGetAST(file: string) {
+		const json = await pandoc({ file }, { file: 'STDOUT', format: 'json' });
+		return JSON.parse(json);
+	}
+
+	async pandocPutAST(file: string, json: any) {
+		const serialised = JSON.stringify(json);
+		return await pandoc({ file: 'STDIN', format: 'json', contents: serialised }, { file });
 	}
 
 	onunload() {

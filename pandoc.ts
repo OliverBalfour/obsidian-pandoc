@@ -70,9 +70,7 @@ export default async (input: PandocInput, output: PandocOutput, extraParams?: st
 		args.push(...extraParams);
 	}
 
-	// Check if the input file exists, and then start
-	stat(input.file, (err: NodeJS.ErrnoException | null, stats: Stats) => {
-
+	function start () {
 		// Spawn a Pandoc child process
 		// Assumes Pandoc is installed and that the arguments are valid
 		// The arguments aren't sanitised, so be careful!
@@ -92,5 +90,15 @@ export default async (input: PandocInput, output: PandocOutput, extraParams?: st
 		pandoc.stderr.on('data', (err: any) => {
 			reject(new Error(err));
 		});
-	});
+	}
+
+	if (input.file === 'STDIN') {
+		start();
+	} else {
+		// Check if the input file exists, and then start
+		stat(input.file, (err: NodeJS.ErrnoException | null, stats: Stats) => {
+			if (stats.isFile()) start();
+			else reject(new Error("Input file does not exist"));
+		});
+	}
 });
