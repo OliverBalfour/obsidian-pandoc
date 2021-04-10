@@ -102,7 +102,7 @@ export default class PandocPlugin extends Plugin {
 			// Fix <span src="image.png">
 			for (let span of Array.from(wrapper.querySelectorAll('span'))) {
 				let src = span.getAttribute('src');
-				if (src && (src.endsWith('.png') || src.endsWith('.jpg'))) {
+				if (src && (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.gif') || src.endsWith('.jpeg'))) {
 					span.innerHTML = '';
 					span.outerHTML = span.outerHTML.replace(/span/g, 'img');
 				}
@@ -110,7 +110,7 @@ export default class PandocPlugin extends Plugin {
 			// Fix <a href="markdown_file_without_extension">, etc.
 			const prefix = 'app://obsidian.md/';
 			for (let a of Array.from(wrapper.querySelectorAll('a'))) {
-				let href = a.href.startsWith(prefix) ? path.join(this.vaultBasePath(), a.href.substring(prefix.length)) : a.href;
+				let href = a.href.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), a.href.substring(prefix.length)) : a.href;
 				if (path.extname(href) === '') {
 					const dir = path.dirname(href);
 					const base = path.basename(href);
@@ -123,6 +123,9 @@ export default class PandocPlugin extends Plugin {
 				}
 				a.href = href;
 			}
+			for (let img of Array.from(wrapper.querySelectorAll('img'))) {
+				img.src = img.src.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), img.src.substring(prefix.length)) : img.src;
+			}
 
 			const renderedMarkdown = wrapper.innerHTML;
 			document.body.removeChild(wrapper);
@@ -130,7 +133,7 @@ export default class PandocPlugin extends Plugin {
 			// Process HTML
 			const title = this.fileBaseName(inputFile);
 			const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-			const html = this.standaloneHTML(this.processHTML(renderedMarkdown), title);
+			const html = this.standaloneHTML(renderedMarkdown, title);
 
 			// Spawn Pandoc / write to HTML file
 			if (outputFormat === 'html') {
@@ -154,19 +157,6 @@ export default class PandocPlugin extends Plugin {
 			new Notice('Pandoc error: ' + e.toString());
 			console.error(e);
 		}
-	}
-
-	processHTML(html: string): string {
-		// Replace `app://local/uri` links with plain `uri` links
-		const regex = /"app:\/\/local\/([\w\-\.!~*'\(\)%]+)(\?\d+)?"/m;
-		let match = html.match(regex);
-		while (match) {
-			// match = [entire match, encoded uri capture group, unused capture group, index: start of match]
-			// Replaces "app://local/uri" with "uri" (quotes included in both cases)
-			html = html.substring(0, match.index) + '"' + window.decodeURIComponent(match[1]) + '"' + html.substring(match.index + match[0].length);
-			match = html.match(regex);
-		}
-		return html;
 	}
 
 	standaloneHTML(html: string, title: string): string {
