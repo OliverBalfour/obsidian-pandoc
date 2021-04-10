@@ -53,13 +53,16 @@ export default class PandocPlugin extends Plugin {
 		}
 	}
 
+	vaultBasePath(): string {
+		return (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+	}
+
 	getCurrentFile(): string | null {
 		const fileData = this.app.workspace.getActiveFile();
 		if (!fileData) return null;
 		const { basename, extension } = fileData;
 		const filename = `${basename}.${extension}`;
-		const basepath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
-		return path.join(basepath, filename);
+		return path.join(this.vaultBasePath(), filename);
 	}
 
 	currentFileCanBeExported(): boolean {
@@ -97,6 +100,7 @@ export default class PandocPlugin extends Plugin {
 			document.body.appendChild(wrapper);
 			const markdown = (this.app.workspace.activeLeaf.view as any).data;
 			await MarkdownRenderer.renderMarkdown(markdown, wrapper, this.fileBaseName(this.getCurrentFile()), {} as Component);
+			// Fix <span src="image.png">
 			for (let span of Array.from(wrapper.querySelectorAll('span'))) {
 				let src = span.getAttribute('src');
 				if (src && (src.endsWith('.png') || src.endsWith('.jpg'))) {
@@ -104,6 +108,23 @@ export default class PandocPlugin extends Plugin {
 					span.outerHTML = span.outerHTML.replace(/span/g, 'img');
 				}
 			}
+			// Fix <a href="markdown_file_without_extension">, etc.
+			const prefix = 'app://obsidian.md/';
+			for (let a of Array.from(wrapper.querySelectorAll('a'))) {
+				let href = a.href.startsWith(prefix) ? path.join(this.vaultBasePath(), a.href.substring(prefix.length)) : a.href;
+				if (path.extname(href) === '') {
+					const dir = path.dirname(href);
+					const base = path.basename(href);
+					const hashIndex = base.indexOf('#');
+					if (hashIndex !== -1) {
+						href = path.join(dir, base.substring(0, hashIndex) + '.md' + base.substring(hashIndex));
+					} else {
+						href = path.join(dir, base + '.md');
+					}
+				}
+				a.href = href;
+			}
+
 			const renderedMarkdown = wrapper.innerHTML;
 			document.body.removeChild(wrapper);
 
