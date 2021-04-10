@@ -31,11 +31,7 @@ export default class PandocPlugin extends Plugin {
 				if (leaf) {
 					if (!checking) {
 						// new SampleModal(this.app).open();
-						pandoc({
-							file: '/home/oliver/zettelkasten/Obsidian Pandoc export.md'
-						}, {
-							file: '/home/oliver/zettelkasten/Obsidian Pandoc export.docx'
-						});
+						this.pandocExport('docx');
 					}
 					return true;
 				}
@@ -56,6 +52,20 @@ export default class PandocPlugin extends Plugin {
 		for (const binary of this.programs) {
 			this.features[binary] = await lookpath(binary);
 		}
+	}
+
+	async pandocExport(format: string) {
+		let stuff;
+		try	{
+			stuff = await pandoc({
+				file: '/home/oliver/zettelkasten/Obsidian Pandoc export.md'
+			}, {
+				file: '/home/oliver/zettelkasten/Obsidian Pandoc export.docx'
+			});
+		} catch (e) {
+			new Notice('Pandoc error: ' + e.toString());
+		}
+		console.log(stuff);
 	}
 
 	onunload() {
