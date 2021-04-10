@@ -4,7 +4,7 @@ This is a Pandoc export plugin for Obsidian (https://obsidian.md).
 
 It adds command palette options to export your notes to a variety of formats including Word Documents (.docx), PDFs, ePub books, HTML pages, PowerPoints (.pptx), Jupyter Notebooks, and LaTeX among others. This is done by interfacing with [Pandoc](https://pandoc.org/).
 
-**Note:** This plugin is still in early alpha. It doesn't support Obsidian's markdown extensions yet, and features like the settings interface and good error handling aren't finished yet. There are guaranteed to be bugs, I hacked this thing together in half a day 😂.
+**Note:** This plugin is still in beta. It **does** support Obsidian's markdown extensions. However, features like the settings interface and good error handling aren't finished yet. There are guaranteed to be bugs, I hacked this thing together in a day 😂
 
 ![screenshot of command palette](./command-palette.png)
 
