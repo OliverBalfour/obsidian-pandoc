@@ -1,6 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { lookpath } from 'lookpath';
-import pandoc, { inputExtensions, outputFormats } from './pandoc';
+import { pandoc, inputExtensions, outputFormats, InputFormat } from './pandoc';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
@@ -88,9 +88,11 @@ export default class PandocPlugin extends Plugin {
 		// us to trivially deal with Obsidian specific Markdown syntax.
 
 		try	{
-			// The containerEl property of WorkspaceLeaf isn't actually exposed in the API
-			// TODO: what happens if preview mode isn't active? Can we change to preview mode?
-			let html = (this.app.workspace.activeLeaf as any).containerEl
+			// Put in preview mode to ensure the HTML is up to date
+			// TODO: should we revert back to the original mode after?
+			// TODO: this doesn't seem to update the HTML fast enough?
+			this.putCurrentWorkspaceInPreviewMode();
+			let html = this.currentWorkspaceContainer()
 				.querySelector('.markdown-preview-sizer.markdown-preview-section').innerHTML;
 
 			html = this.processHTML(html);
@@ -99,12 +101,17 @@ export default class PandocPlugin extends Plugin {
 			// Rather than using a temp file in /tmp, we make a file in the vault so that
 			// embedded links will resolve correctly
 			// TODO: this just uses the base path - does it work for files inside folders?
-			const tmpfile = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.fileBaseName(inputFile) + '.html');
-			await fs.promises.writeFile(tmpfile, html);
-			console.log("wrote html to file")
+			// const tmpfile = path.join((this.app.vault.adapter as FileSystemAdapter).getBasePath(), this.fileBaseName(inputFile) + '.html');
+			// await fs.promises.writeFile(tmpfile, html);
+			// console.log("wrote html to file")
 
-			const dest = await this.pandocExport(tmpfile, outputFormat);
-			fs.stat(dest, (err: NodeJS.ErrnoException | null, stats: fs.Stats) => {
+			const AST = await this.pandocGetASTFromSTDIN(html, 'html');
+			console.log(AST);
+			const newAST = this.pandocFilterAST(AST);
+			const outputFile = this.replaceFileExtension(inputFile, outputFormat);
+			await this.pandocPutAST(outputFile, newAST, this.fileBaseName(inputFile));
+
+			fs.stat(outputFile, (err: NodeJS.ErrnoException | null, stats: fs.Stats) => {
 				// TODO: mention the filename
 				if (stats.isFile()) new Notice('Successfully exported via Pandoc');
 				else {
@@ -114,12 +121,23 @@ export default class PandocPlugin extends Plugin {
 			});
 			
 			// Delete temp file afterwards
-			// TODO: why not just use STDIN instead?
-			await fs.promises.unlink(tmpfile);
+			// await fs.promises.unlink(tmpfile);
 		} catch (e) {
 			new Notice('Pandoc error: ' + e.toString());
 			console.error(e);
 		}
+	}
+
+	putCurrentWorkspaceInPreviewMode() {
+		const leaf = this.app.workspace.activeLeaf;
+		let state = leaf.getViewState()
+		state.state.mode = 'preview';
+		this.app.workspace.activeLeaf.setViewState(state);
+	}
+
+	currentWorkspaceContainer(): HTMLElement {
+		// The containerEl property of WorkspaceLeaf isn't actually exposed in the API
+		return (this.app.workspace.activeLeaf as any).containerEl;
 	}
 
 	processHTML(html: string): string {
@@ -139,15 +157,6 @@ export default class PandocPlugin extends Plugin {
 		return path.basename(file, path.extname(file));
 	}
 
-	async pandocExport(inputFile: string, outputFormat: string): Promise<string> {
-		const AST = await this.pandocGetAST(inputFile);
-		console.log(AST);
-		const newAST = this.pandocFilterAST(AST);
-		const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-		await this.pandocPutAST(outputFile, newAST, this.fileBaseName(inputFile));
-		return outputFile;
-	}
-
 	pandocFilterAST(ast: any): any {
 		return ast;
 	}
@@ -160,6 +169,11 @@ export default class PandocPlugin extends Plugin {
 
 	async pandocGetAST(file: string) {
 		const json = await pandoc({ file }, { file: 'STDOUT', format: 'json' });
+		return JSON.parse(json);
+	}
+
+	async pandocGetASTFromSTDIN(contents: string, format: InputFormat) {
+		const json = await pandoc({ file: 'STDIN', contents, format }, { file: 'STDOUT', format: 'json' });
 		return JSON.parse(json);
 	}
 

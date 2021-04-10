@@ -18,7 +18,7 @@ type URLString = string;
 // gfm (GitHub markdown), commonmark_x (extended CommonMark)
 // Not all input formats are here for now
 // JSON is the JSON serialisation of the Pandoc AST which can be used for filtering
-type InputFormat = 'markdown' | 'commonmark' | 'docx' | 'csv' | 'html'
+export type InputFormat = 'markdown' | 'commonmark' | 'docx' | 'csv' | 'html'
   | 'json' | 'latex' | 'odt';
 
 // TODO: is Pandoc markdown the ideal default markdown type?
@@ -26,37 +26,37 @@ export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 
 // Subset of output formats, will add more later
 // Note: you need a `-o -` in the command to output odt, docx, epub or pdf output (presumably as they are binary formats or something)
-type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
+export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
   | 'html' | 'ipynb' | 'pdf' | 'json' | 'latex' | 'odt' | 'plain' | 'pptx';
 
 // List of [pretty name, pandoc format name, file extension]
 export const outputFormats = [
-	['AsciiDoc', 'asciidoc', 'adoc'],
-	['Word Document', 'docx', 'docx'],
+	['AsciiDoc (adoc)', 'asciidoc', 'adoc'],
+	['Word Document (docx)', 'docx', 'docx'],
 	['Pandoc Markdown', 'markdown', 'md'],
 	['HTML','html','html'],
 	['LaTeX', 'latex', 'tex'],
-	['OpenDocument', 'odt', 'odt'],
-	['Plain Text', 'plain', 'txt'],
-	['PowerPoint', 'pptx', 'pptx'],
+	['OpenDocument (odt)', 'odt', 'odt'],
+	['Plain Text (txt)', 'plain', 'txt'],
+	['PowerPoint (pptx)', 'pptx', 'pptx'],
 	['ePub', 'epub', 'epub'],
-	['PDF', 'pdf', 'pdf'],
+	['PDF (via LaTeX)', 'pdf', 'pdf'],
 	['Jupyter Notebook', 'ipynb', 'ipynb'],
 ];
-interface PandocInput {
+export interface PandocInput {
 	file: AbsoluteFilePath | URLString | 'STDIN',  // if STDIN, the contents parameter must exist
 	format?: InputFormat,  // -f/--from format, if left blank it's inferred by Pandoc
 	contents?: string,
 	title?: string,  // used as metadata for HTML <title>, etc. defaults to the file base name
 }
 
-interface PandocOutput {
+export interface PandocOutput {
 	file: AbsoluteFilePath | 'STDOUT', // if STDOUT, the promise will resolve to a string
 	format?: OutputFormat,  // -t/--to format, inferred if blank
 }
 
 // Note: extraParams is a list of strings like ['-o', 'file.md']
-export default async (input: PandocInput, output: PandocOutput, extraParams?: string[]) : Promise<string | null> => new Promise((resolve, reject) => {
+export const pandoc = async (input: PandocInput, output: PandocOutput, extraParams?: string[]) : Promise<string | null> => new Promise((resolve, reject) => {
 	const stdin = input.file === 'STDIN';
 	const stdout = output.file === 'STDOUT';
 
