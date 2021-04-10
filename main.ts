@@ -38,13 +38,13 @@ export default class PandocPlugin extends Plugin {
 				name: 'Export to ' + prettyName,
 				checkCallback: (checking: boolean) => {
 					let leaf = this.app.workspace.activeLeaf;
-					if (leaf && this.currentFileCanBeExported()) {
-						if (!checking) {
-							this.startPandocExport(this.getCurrentFile(), extension);
-						}
-						return true;
+					if (!leaf) return false;
+					if (!this.features.pandoc) return false;
+					if (!this.currentFileCanBeExported()) return false;
+					if (!checking) {
+						this.startPandocExport(this.getCurrentFile(), extension);
 					}
-					return false;
+					return true;
 				}
 			});
 		}
