@@ -2,6 +2,7 @@ import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapte
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, InputFormat } from './pandoc';
 import fontFace from './font-face';
+import appcss from './appcss';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -141,7 +142,8 @@ export default class PandocPlugin extends Plugin {
 	standaloneHTML(html: string, title: string): string {
 		// Wraps an HTML fragment in a proper document structure
 		//  and injects the page's CSS
-		let css = ' ' + Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join(' ');
+		let css = appcss;
+		css += ' ' + Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join(' ');
 		// TODO: inject MathJax fonts without slow page load times
 		if (html.indexOf('jax="CHTML"') !== -1) css += ' ' + fontFace;
 		return `<!doctype html>\n` +
