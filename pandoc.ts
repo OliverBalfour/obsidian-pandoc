@@ -3,6 +3,7 @@
 
 import { stat, Stats } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
+import * as path from 'path';
 
 // Pandoc CLI syntax
 // pandoc -f markdown -s -t html -o output.html input.md
@@ -20,15 +21,33 @@ type URLString = string;
 type InputFormat = 'markdown' | 'commonmark' | 'docx' | 'csv' | 'html'
   | 'json' | 'latex' | 'odt';
 
+// TODO: is Pandoc markdown the ideal default markdown type?
+export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
+
 // Subset of output formats, will add more later
 // Note: you need a `-o -` in the command to output odt, docx, epub or pdf output (presumably as they are binary formats or something)
 type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
   | 'html' | 'ipynb' | 'pdf' | 'json' | 'latex' | 'odt' | 'plain' | 'pptx';
 
+// List of [pretty name, pandoc format name, file extension]
+export const outputFormats = [
+	['AsciiDoc', 'asciidoc', 'adoc'],
+	['Word Document', 'docx', 'docx'],
+	['Pandoc Markdown', 'markdown', 'md'],
+	['HTML','html','html'],
+	['LaTeX', 'latex', 'tex'],
+	['OpenDocument', 'odt', 'odt'],
+	['Plain Text', 'plain', 'txt'],
+	['PowerPoint', 'pptx', 'pptx'],
+	['ePub', 'epub', 'epub'],
+	['PDF', 'pdf', 'pdf'],
+	['Jupyter Notebook', 'ipynb', 'ipynb'],
+];
 interface PandocInput {
 	file: AbsoluteFilePath | URLString | 'STDIN',  // if STDIN, the contents parameter must exist
 	format?: InputFormat,  // -f/--from format, if left blank it's inferred by Pandoc
 	contents?: string,
+	title?: string,  // used as metadata for HTML <title>, etc. defaults to the file base name
 }
 
 interface PandocOutput {
@@ -42,10 +61,23 @@ export default async (input: PandocInput, output: PandocOutput, extraParams?: st
 	const stdout = output.file === 'STDOUT';
 
 	let pandoc: ChildProcess;
-	let result = "";
+	let result = '';
+
+
+	// const fileExtension = (file: string): string => path.extname(file).substring(1);
+	const fileBaseName = (file: string): string => path.basename(file, path.extname(file));
 
 	// Construct the Pandoc arguments list
 	let args: string[] = [];
+
+	// TODO: find the format if it's not specified?
+	// if (!input.format) {
+	// 	input.format = fileExtension(input.file) as InputFormat;
+	// }
+
+	// The title is needed for ePub and standalone HTML formats
+	const title = input.title ? input.title : fileBaseName(input.file);
+	args.push('--metadata', `title=${title}`);
 	if (input.format) {
 		args.push('--from');
 		args.push(input.format);
@@ -53,9 +85,9 @@ export default async (input: PandocInput, output: PandocOutput, extraParams?: st
 	if (output.format) {
 		args.push('--to');
 		args.push(output.format);
-		if (output.format === 'html')
-			args.push('-s');
 	}
+	if (output.format === 'html' || output.file.endsWith('.html'))
+		args.push('-s');
 	if (!stdout) {
 		args.push('-o');
 		args.push(output.file);
@@ -99,7 +131,7 @@ export default async (input: PandocInput, output: PandocOutput, extraParams?: st
 		// Check if the input file exists, and then start
 		stat(input.file, (err: NodeJS.ErrnoException | null, stats: Stats) => {
 			if (stats.isFile()) start();
-			else reject(new Error("Input file does not exist"));
+			else reject(new Error('Input file does not exist'));
 		});
 	}
 });

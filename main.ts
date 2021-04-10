@@ -1,8 +1,8 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { lookpath } from 'lookpath';
-import pandoc from './pandoc';
+import pandoc, { inputExtensions, outputFormats } from './pandoc';
 import { stat, Stats } from 'fs';
-import { join } from 'path';
+import * as path from 'path';
 
 interface PandocPluginSettings {
 	showCLICommands: boolean;
@@ -31,28 +31,44 @@ export default class PandocPlugin extends Plugin {
 	}
 
 	registerCommands() {
-		this.addCommand({
-			id: 'open-sample-modal',
-			name: 'Open Sample Modal',
-			checkCallback: (checking: boolean) => {
-				let leaf = this.app.workspace.activeLeaf;
-				if (leaf) {
-					if (!checking) {
-						// new SampleModal(this.app).open();
-						this.startPandocExport(this.getCurrentFile(), 'docx');
+		for (let [prettyName, pandocFormat, extension] of outputFormats) {
+			if (pandocFormat === 'latex' && !this.features['latex']) continue;
+			this.addCommand({
+				id: 'pandoc-export-' + pandocFormat,
+				name: 'Export to ' + prettyName,
+				checkCallback: (checking: boolean) => {
+					let leaf = this.app.workspace.activeLeaf;
+					if (leaf && this.currentFileCanBeExported()) {
+						if (!checking) {
+							this.startPandocExport(this.getCurrentFile(), extension);
+						}
+						return true;
 					}
-					return true;
+					return false;
 				}
-				return false;
-			}
-		});
+			});
+		}
 	}
 
-	getCurrentFile(): string {
-		const { basename, extension } = this.app.workspace.getActiveFile();
+	getCurrentFile(): string | null {
+		const fileData = this.app.workspace.getActiveFile();
+		if (!fileData) return null;
+		const { basename, extension } = fileData;
 		const filename = `${basename}.${extension}`;
 		const basepath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
-		return join(basepath, filename);
+		return path.join(basepath, filename);
+	}
+
+	currentFileCanBeExported(): boolean {
+		// Note: this is super inefficient
+		// This can probably also be cached each time the file changes instead
+		//  of being called once per format per open of the command palette
+		const file = this.getCurrentFile();
+		if (!file) return false;
+		for (const ext of inputExtensions) {
+			if (file.endsWith(ext)) return true;
+		}
+		return false;
 	}
 
 	async createBinaryMap() {
@@ -86,9 +102,8 @@ export default class PandocPlugin extends Plugin {
 		console.log(AST);
 		const newAST = this.pandocFilterAST(AST);
 		const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-		// Bug: pandocPutAST hangs until the app is restarted before making the file
-		// It appears to be a STDIN issue then I guess - maybe I need to flush the STDIN buffer or something?
-		await this.pandocPutAST(outputFile, newAST);
+		const fileBaseName = (file: string): string => path.basename(file, path.extname(file));
+		await this.pandocPutAST(outputFile, newAST, fileBaseName(inputFile));
 		return outputFile;
 	}
 
@@ -107,9 +122,9 @@ export default class PandocPlugin extends Plugin {
 		return JSON.parse(json);
 	}
 
-	async pandocPutAST(file: string, json: any) {
+	async pandocPutAST(file: string, json: any, title: string) {
 		const serialised = JSON.stringify(json);
-		return await pandoc({ file: 'STDIN', format: 'json', contents: serialised }, { file });
+		return await pandoc({ file: 'STDIN', format: 'json', contents: serialised, title }, { file });
 	}
 
 	onunload() {
@@ -124,23 +139,6 @@ export default class PandocPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		let {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
 class PandocPluginSettingTab extends PluginSettingTab {
 	plugin: PandocPlugin;
 	errorMessages: { [key: string]: string } = {

@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.1",
-	"minAppVersion": "0.9.12",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md/about",
-	"isDesktopOnly": false
+	"id": "obsidian-pandoc-plugin",
+	"name": "Pandoc Plugin",
+	"version": "0.0.1",
+	"minAppVersion": "0.11.13",
+	"description": "This is a Pandoc export plugin for Obsidian. It provides command palette options to export to other formats like DOCX, ePub and PDF.",
+	"author": "Oliver Balfour",
+	"authorUrl": "https://github.com/OliverBalfour/obsidian-pandoc",
+	"isDesktopOnly": true
 }
