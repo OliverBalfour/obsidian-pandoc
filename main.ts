@@ -87,7 +87,6 @@ export default class PandocPlugin extends Plugin {
 
 	async startPandocExport(inputFile: string, outputFormat: string) {
 		console.log(`Pandoc plugin: converting ${inputFile} to ${outputFormat}`);
-		console.log(this.app);  // TODO: remove
 
 		// Instead of using Pandoc to process the raw Markdown, we use Obsidian's
 		// internal markdown renderer, and process the HTML it generates instead.
@@ -138,7 +137,7 @@ export default class PandocPlugin extends Plugin {
 				await fs.promises.writeFile(outputFile, html);
 			} else {
 				const AST = await this.pandocGetASTFromSTDIN(html, 'html');
-				console.log(AST);
+				// console.log(AST);
 				const newAST = this.pandocFilterAST(AST);
 				await this.pandocPutAST(outputFile, newAST, title);
 			}
