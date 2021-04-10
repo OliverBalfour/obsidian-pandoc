@@ -78,6 +78,7 @@ export default async (input: PandocInput, output: PandocOutput, extraParams?: st
 
 		if (stdin) {
 			pandoc.stdin.write(input.contents);
+			pandoc.stdin.end();
 		}
 
 		// Handlers

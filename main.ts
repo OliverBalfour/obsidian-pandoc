@@ -28,10 +28,6 @@ export default class PandocPlugin extends Plugin {
 		this.registerCommands();
 
 		this.addSettingTab(new PandocPluginSettingTab(this.app, this));
-
-		this.registerCodeMirror((cm: CodeMirror.Editor) => {
-			console.log('codemirror', cm);
-		});
 	}
 
 	registerCommands() {
@@ -72,6 +68,7 @@ export default class PandocPlugin extends Plugin {
 		try	{
 			const dest = await this.pandocExport(inputFile, outputFormat);
 			stat(dest, (err: NodeJS.ErrnoException | null, stats: Stats) => {
+				// TODO: mention the filename
 				if (stats.isFile()) new Notice('Successfully exported via Pandoc');
 				else {
 					new Notice('Pandoc export silently failed');
@@ -89,6 +86,8 @@ export default class PandocPlugin extends Plugin {
 		console.log(AST);
 		const newAST = this.pandocFilterAST(AST);
 		const outputFile = this.replaceFileExtension(inputFile, outputFormat);
+		// Bug: pandocPutAST hangs until the app is restarted before making the file
+		// It appears to be a STDIN issue then I guess - maybe I need to flush the STDIN buffer or something?
 		await this.pandocPutAST(outputFile, newAST);
 		return outputFile;
 	}
