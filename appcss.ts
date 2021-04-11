@@ -1,3 +1,10 @@
+
+// This CSS is composed of Prism.css and a small amount of light theme Obsidian CSS,
+// which is copyrighted by the Obsidian developers.
+// I've received permission from @Licat on Discord to include this snippet in the plugin
+// and HTML exports from it.
+// See https://discord.com/channels/686053708261228577/707816848615407697/830630553883377690
+
 export default `
 :root {
   --default-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Microsoft YaHei Light", sans-serif;
