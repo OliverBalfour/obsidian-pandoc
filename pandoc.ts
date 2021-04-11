@@ -1,5 +1,5 @@
 
-// Derived from https://github.com/eshinn/node-pandoc
+// Inspired by https://github.com/eshinn/node-pandoc
 
 import { stat, Stats } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
@@ -33,7 +33,7 @@ export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'ep
 export const outputFormats = [
 	['AsciiDoc (adoc)', 'asciidoc', 'adoc'],
 	['Word Document (docx)', 'docx', 'docx'],
-	['Pandoc Markdown', 'markdown', 'md'],
+	['Pandoc Markdown', 'markdown', 'pandoc.md'],  // X.md -> X.pandoc.md to avoid conflict
 	['HTML','html','html'],
 	['LaTeX', 'latex', 'tex'],
 	['OpenDocument (odt)', 'odt', 'odt'],

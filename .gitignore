@@ -5,3 +5,5 @@
 # npm
 node_modules
 package-lock.json
+
+data.json

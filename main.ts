@@ -1,21 +1,39 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter, MarkdownRenderer, Component } from 'obsidian';
 import { lookpath } from 'lookpath';
-import { pandoc, inputExtensions, outputFormats, InputFormat } from './pandoc';
+import { pandoc, inputExtensions, outputFormats, InputFormat, OutputFormat } from './pandoc';
 import fontFace from './font-face';
 import appcss from './appcss';
 import * as fs from 'fs';
 import * as path from 'path';
 
 interface PandocPluginSettings {
+	// Show a command like `pandoc -o Output.html -t html -f commonmark Input.md`
+	//  in the UI as an example of how to do something similar in the terminal
 	showCLICommands: boolean;
+	// When rendering internal [[wikilinks]], should we add a file extension?
+	// eg turns <a href="file"> to <a href="file.extension">
+	addExtensionsToInternalLinks: string,
+	// Do we inject CSS to add proper MathJax fonts, if there are math equations?
+	injectMathJaxCSS: boolean,
+	// Do we inject the default Obsidian light theme styling? This may cause licensing issues
+	injectAppCSS: boolean,
+	// Do we inject 3rd party plugin CSS?
+	injectPluginCSS: boolean,
+	// Use a custom local .css file?
+	customCSSFile: string | null,
 }
 
 const DEFAULT_SETTINGS: PandocPluginSettings = {
-	showCLICommands: false,
+	showCLICommands: true,
+	addExtensionsToInternalLinks: 'html',
+	injectMathJaxCSS: true,
+	injectAppCSS: true,
+	injectPluginCSS: true,
+	customCSSFile: null,
 }
 export default class PandocPlugin extends Plugin {
 	settings: PandocPluginSettings;
-	programs = ['pandoc', 'latex', 'node'];
+	programs = ['pandoc', 'latex'];
 	features: { [key: string]: string | undefined } = {};
 
 	async onload() {
@@ -45,7 +63,7 @@ export default class PandocPlugin extends Plugin {
 					if (!this.features.pandoc && pandocFormat !== 'html') return false;
 					if (!this.currentFileCanBeExported()) return false;
 					if (!checking) {
-						this.startPandocExport(this.getCurrentFile(), extension);
+						this.startPandocExport(this.getCurrentFile(), pandocFormat as OutputFormat, extension);
 					}
 					return true;
 				}
@@ -85,8 +103,8 @@ export default class PandocPlugin extends Plugin {
 		}
 	}
 
-	async startPandocExport(inputFile: string, outputFormat: string) {
-		console.log(`Pandoc plugin: converting ${inputFile} to ${outputFormat}`);
+	async startPandocExport(inputFile: string, format: OutputFormat, extension: string) {
+		console.log(`Pandoc plugin: converting ${inputFile} to ${format}`);
 
 		// Instead of using Pandoc to process the raw Markdown, we use Obsidian's
 		// internal markdown renderer, and process the HTML it generates instead.
@@ -99,50 +117,29 @@ export default class PandocPlugin extends Plugin {
 			document.body.appendChild(wrapper);
 			const markdown = (this.app.workspace.activeLeaf.view as any).data;
 			await MarkdownRenderer.renderMarkdown(markdown, wrapper, this.fileBaseName(this.getCurrentFile()), {} as Component);
-			// Fix <span src="image.png">
-			for (let span of Array.from(wrapper.querySelectorAll('span'))) {
-				let src = span.getAttribute('src');
-				if (src && (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.gif') || src.endsWith('.jpeg'))) {
-					span.innerHTML = '';
-					span.outerHTML = span.outerHTML.replace(/span/g, 'img');
-				}
-			}
-			// Fix <a href="markdown_file_without_extension">, etc.
-			const prefix = 'app://obsidian.md/';
-			for (let a of Array.from(wrapper.querySelectorAll('a'))) {
-				let href = a.href.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), a.href.substring(prefix.length)) : a.href;
-				if (path.extname(href) === '') {
-					const dir = path.dirname(href);
-					const base = path.basename(href);
-					const hashIndex = base.indexOf('#');
-					if (hashIndex !== -1) {
-						href = path.join(dir, base.substring(0, hashIndex) + '.md' + base.substring(hashIndex));
-					} else {
-						href = path.join(dir, base + '.md');
-					}
-				}
-				a.href = href;
-			}
-			for (let img of Array.from(wrapper.querySelectorAll('img'))) {
-				img.src = img.src.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), img.src.substring(prefix.length)) : img.src;
-			}
-
+			this.postProcessRenderedMarkdown(wrapper);
 			const renderedMarkdown = wrapper.innerHTML;
 			document.body.removeChild(wrapper);
 
 			// Process HTML
 			const title = this.fileBaseName(inputFile);
-			const outputFile = this.replaceFileExtension(inputFile, outputFormat);
-			const html = this.standaloneHTML(renderedMarkdown, title);
+			const outputFile = this.replaceFileExtension(inputFile, extension);
+			const html = await this.standaloneHTML(renderedMarkdown, title);
 
 			// Spawn Pandoc / write to HTML file
-			if (outputFormat === 'html') {
+			if (format === 'html') {
 				await fs.promises.writeFile(outputFile, html);
 			} else {
-				const AST = await this.pandocGetASTFromSTDIN(html, 'html');
-				// console.log(AST);
-				const newAST = this.pandocFilterAST(AST);
-				await this.pandocPutAST(outputFile, newAST, title);
+				await pandoc({ file: 'STDIN', contents: html, format: 'html' }, { file: outputFile, format });
+
+				// Old method: get Pandoc's AST as JSON and apply filters
+				// This is no longer necessary as the HTML has everything we need
+				//  and transformations are applied more easily to the HTML than the AST
+				// const json = await pandoc({ file: 'STDIN', contents: html, format: 'html' }, { file: 'STDOUT', format: 'json' });
+				// const AST = JSON.parse(json);
+				// const newAST = this.pandocFilterAST(AST);
+				// const serialised = JSON.stringify(newAST);
+				// await pandoc({ file: 'STDIN', format: 'json', contents: serialised, title }, { file: outputFile, format });
 			}
 
 			// Wrap up
@@ -159,13 +156,41 @@ export default class PandocPlugin extends Plugin {
 		}
 	}
 
-	standaloneHTML(html: string, title: string): string {
+	async getCustomCSS(): Promise<string> {
+		if (!this.settings.customCSSFile) return;
+		let file = this.settings.customCSSFile;
+		let buffer: Buffer = null;
+		// Try absolute path
+		try {
+			let test = await fs.promises.readFile(file);
+			buffer = test;
+		} catch (e) {}
+		// Try relative path
+		try {
+			let test = await fs.promises.readFile(path.join(this.vaultBasePath(), file));
+			buffer = test;
+		} catch (e) {}
+		if (!buffer) {
+			new Notice('Failed to load custom Pandoc CSS file: ' + this.settings.customCSSFile);
+			return '';
+		} else {
+			return buffer.toString();
+		}
+	}
+
+	async standaloneHTML(html: string, title: string): Promise<string> {
 		// Wraps an HTML fragment in a proper document structure
 		//  and injects the page's CSS
-		let css = appcss;
-		css += ' ' + Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join(' ');
-		// TODO: inject MathJax fonts without slow page load times?
-		if (html.indexOf('jax="CHTML"') !== -1) css += ' ' + fontFace;
+		let css = '';
+		// Inject app CSS if the user wants it
+		if (this.settings.injectAppCSS) css = appcss;
+		// Inject plugin CSS if the user wants it
+		if (this.settings.injectPluginCSS)
+			css += ' ' + Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join(' ');
+		// Inject MathJax font CSS if needed
+		if (this.settings.injectMathJaxCSS && html.indexOf('jax="CHTML"') !== -1) css += ' ' + fontFace;
+		// Inject custom local CSS file if it exists
+		css += await this.getCustomCSS();
 		return `<!doctype html>\n` +
 			   `<html>\n` +
 			   `	<head>\n` +
@@ -179,28 +204,48 @@ export default class PandocPlugin extends Plugin {
 			   `</html>`;
 	}
 
-	fileBaseName(file: string): string {
-		return path.basename(file, path.extname(file));
+	postProcessRenderedMarkdown(wrapper: HTMLElement) {
+		// Fix <span src="image.png">
+		for (let span of Array.from(wrapper.querySelectorAll('span'))) {
+			let src = span.getAttribute('src');
+			if (src && (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.gif') || src.endsWith('.jpeg'))) {
+				span.innerHTML = '';
+				span.outerHTML = span.outerHTML.replace(/span/g, 'img');
+			}
+		}
+		// Fix <a href="app://obsidian.md/markdown_file_without_extension">
+		const prefix = 'app://obsidian.md/';
+		for (let a of Array.from(wrapper.querySelectorAll('a'))) {
+			let href = a.href.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), a.href.substring(prefix.length)) : a.href;
+			if (this.settings.addExtensionsToInternalLinks.length && a.href.startsWith(prefix)) {
+				if (path.extname(href) === '') {
+					const dir = path.dirname(href);
+					const base = path.basename(href);
+					// Be careful to turn [[note#heading]] into note.extension#heading not note#heading.extension
+					const hashIndex = base.indexOf('#');
+					if (hashIndex !== -1) {
+						href = path.join(dir, base.substring(0, hashIndex) + '.' + this.settings.addExtensionsToInternalLinks + base.substring(hashIndex));
+					} else {
+						href = path.join(dir, base + '.' + this.settings.addExtensionsToInternalLinks);
+					}
+				}
+			}
+			a.href = href;
+		}
+		// Fix <img src="app://obsidian.md/image.png">
+		for (let img of Array.from(wrapper.querySelectorAll('img'))) {
+			img.src = img.src.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), img.src.substring(prefix.length)) : img.src;
+		}
 	}
 
-	pandocFilterAST(ast: any): any {
-		return ast;
+	fileBaseName(file: string): string {
+		return path.basename(file, path.extname(file));
 	}
 
 	replaceFileExtension(file: string, ext: string): string {
 		// Source: https://stackoverflow.com/a/5953384/4642943
 		let pos = file.lastIndexOf('.');
 		return file.substr(0, pos < 0 ? file.length : pos) + '.' + ext;
-	}
-
-	async pandocGetASTFromSTDIN(contents: string, format: InputFormat) {
-		const json = await pandoc({ file: 'STDIN', contents, format }, { file: 'STDOUT', format: 'json' });
-		return JSON.parse(json);
-	}
-
-	async pandocPutAST(file: string, json: any, title: string) {
-		const serialised = JSON.stringify(json);
-		return await pandoc({ file: 'STDIN', format: 'json', contents: serialised, title }, { file });
 	}
 
 	onunload() {
@@ -220,7 +265,6 @@ class PandocPluginSettingTab extends PluginSettingTab {
 	errorMessages: { [key: string]: string } = {
 		pandoc: "Pandoc is not installed or accessible on your PATH. This plugin's functionality will be limited.",
 		latex: "LaTeX is not installed or accessible on your PATH. Please install it if you want PDF exports via LaTeX.",
-		node: "Node.js is not installed or accessible on your PATH. Please install it if you want Pandoc CLI commands to be shown.",
 	}
 
 	constructor(app: App, plugin: PandocPlugin) {
@@ -246,12 +290,65 @@ class PandocPluginSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl)
+			.setName("Custom CSS file for HTML output")
+			.setDesc("This local CSS file will be read and injected into HTML exports. Use an absolute path or a path relative to the vault.")
+			.addText(text => text
+				.setPlaceholder('File name')
+				.setValue(this.plugin.settings.customCSSFile)
+				.onChange(async (value: string) => {
+					if (!value.length) this.plugin.settings.customCSSFile = null;
+					else this.plugin.settings.customCSSFile = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName("Show CLI commands (not implemented)")
-			.setDesc("For Pandoc's command line interface")
+			.setDesc("For Pandoc's command line interface. The CLI will have slightly different results due to how this plugin works.")
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.showCLICommands)
-				.onChange(async (value) => {
+				.onChange(async (value: boolean) => {
 					this.plugin.settings.showCLICommands = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("Inject MathJax CSS into HTML output")
+			.setDesc("Only applies to files containing math. This makes math look good, but the files become bigger.")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.injectMathJaxCSS)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.injectMathJaxCSS = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("Use the light theme CSS in HTML output")
+			.setDesc("This uses the default Obsidian light theme colours.")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.injectAppCSS)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.injectAppCSS = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("Inject community plugin CSS (HTML output only)")
+			.setDesc("This styles any 3rd party embeds, but the files become bigger.")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.injectPluginCSS)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.injectPluginCSS = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("[[Wikilink]] resolution file extension")
+			.setDesc("If specified, it turns [[note#heading]] to <a href='note.extension#heading'> instead of <a href='note#heading'>")
+			.addText(text => text
+				.setPlaceholder('File extension (eg "md" or "html")')
+				.setValue(this.plugin.settings.addExtensionsToInternalLinks)
+				.onChange(async (value: string) => {
+					this.plugin.settings.addExtensionsToInternalLinks = value;
 					await this.plugin.saveSettings();
 				}));
 	}
