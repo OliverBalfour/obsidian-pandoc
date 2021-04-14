@@ -66,7 +66,6 @@ https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javasc
      */
   /* Code blocks */
   /* Inline code */
-}
 code[class*="language-"],
 pre[class*="language-"] {
   color: black;

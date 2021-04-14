@@ -16,7 +16,9 @@ import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
 import appCSS from './styles/app-css';
 
-export default async function (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string) {
+// Note: parentFiles is for internal use (to prevent recursively embedded notes)
+// inputFile must be an absolute file path
+export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string, parentFiles: string[] = []) {
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const wrapper = document.createElement('div');
     wrapper.style.display = 'hidden';
@@ -24,13 +26,19 @@ export default async function (settings: PandocPluginSettings, markdown: string,
     await MarkdownRenderer.renderMarkdown(markdown, wrapper, path.dirname(inputFile), {} as Component);
 
     // Post-process the HTML in-place
-    await postProcessRenderedHTML(settings, inputFile, wrapper);
+    await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, parentFiles);
     const renderedMarkdown = wrapper.innerHTML;
     document.body.removeChild(wrapper);
 
     // Make the HTML a standalone document - inject CSS, a <title>, etc.
-    const title = getTitle(markdown, inputFile);
-    const html = await standaloneHTML(settings, renderedMarkdown, title, vaultBasePath);
+    let html;
+    if (parentFiles.length === 0) {
+        const title = getTitle(markdown, inputFile);
+        html = await standaloneHTML(settings, renderedMarkdown, title, vaultBasePath);
+    } else {
+        // Embedded notes don't need CSS injected
+        html = renderedMarkdown;
+    }
 
     return html;
 }
@@ -99,7 +107,8 @@ async function getDesiredCSS(settings: PandocPluginSettings, html: string, vault
     if (settings.injectPluginCSS)
         css += ' ' + Array.from(document.querySelectorAll('style'))
             .map(s => s.innerHTML).join(' ');
-    // Inject MathJax font CSS if needed
+    // Inject MathJax font CSS if needed (at this stage embedded notes are
+    //  already embedded so this covers all cases)
     if (settings.injectMathJaxCSS && html.indexOf('jax="CHTML"') !== -1)
         css += ' ' + mathJaxFontCSS;
     // Inject custom local CSS file if it exists
@@ -125,12 +134,36 @@ async function standaloneHTML(settings: PandocPluginSettings, html: string, titl
         `</html>`;
 }
 
-async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement) {
+async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement, vaultBasePath: string, parentFiles: string[] = []) {
     const dirname = path.dirname(inputFile);
     // Fix <span src="image.png">
     for (let span of Array.from(wrapper.querySelectorAll('span[src$=".png"], span[src$=".jpg"], span[src$=".gif"], span[src$=".jpeg"]'))) {
         span.innerHTML = '';
         span.outerHTML = span.outerHTML.replace(/span/g, 'img');
+    }
+    // Fix <span class='internal-embed' src='another_note_without_extension'>
+    for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
+        let src = span.getAttribute('src');
+        if (src) {
+            const file = path.join(dirname, src + '.md');
+            try {
+                if (parentFiles.indexOf(file) !== -1) {
+                    // We've got an infinite recursion on our hands
+                    // We should replace the embed with a wikilink
+                    // Then our link processing happens afterwards
+                    span.outerHTML = `<a href="${src+'.md'}">${span.innerHTML}</a>`;
+                } else {
+                    const markdown = (await fs.promises.readFile(file)).toString();
+                    const newParentFiles = [...parentFiles];
+                    newParentFiles.push(inputFile);
+                    const html = await render(settings, markdown, file, vaultBasePath, newParentFiles);
+                    span.outerHTML = html;
+                }
+            } catch (e) {
+                // Continue if it can't be loaded
+                console.error("Pandoc plugin encountered an error trying to load an embedded note: " + e.toString());
+            }
+        }
     }
     // Fix <a href="app://obsidian.md/markdown_file_without_extension">
     const prefix = 'app://obsidian.md/';
@@ -156,22 +189,6 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     // These errors can be safely ignored
     for (let img of Array.from(wrapper.querySelectorAll('img'))) {
         img.src = img.src.startsWith(prefix) ? path.join(dirname, img.src.substring(prefix.length)) : img.src;
-    }
-    // Fix <span class='internal-embed' src='another_note_without_extension'>
-    for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
-        let src = span.getAttribute('src');
-        if (src) {
-            const file = path.join(dirname, src + '.md');
-            try {
-                const result = (await fs.promises.readFile(file)).toString();
-                // TODO: process result to postprocessed HTML WITHOUT triggering
-                // an infinite loop if you have recursively embedded notes (#5)
-                span.outerHTML = '';
-            } catch (e) {
-                // Continue if it can't be loaded
-                console.error("Pandoc plugin encountered an error trying to load an embedded note: " + e.toString());
-            }
-        }
     }
     // Remove YAML frontmatter from the output if desired
     if (!settings.displayYAMLFrontmatter) {
