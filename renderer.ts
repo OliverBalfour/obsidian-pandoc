@@ -170,10 +170,7 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     for (let a of Array.from(wrapper.querySelectorAll('a'))) {
         if (!a.href.startsWith(prefix)) continue;
         // This is now an internal link (wikilink)
-        if (settings.linkStrippingBehaviour === 'strip') {
-            a.outerHTML = '';
-            continue;
-        } else if (settings.linkStrippingBehaviour === 'link') {
+        if (settings.linkStrippingBehaviour === 'link' || outputFormat === 'html') {
             let href = path.join(dirname, a.href.substring(prefix.length));
             if (settings.addExtensionsToInternalLinks.length && a.href.startsWith(prefix)) {
                 if (path.extname(href) === '') {
@@ -189,7 +186,9 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
                 }
             }
             a.href = href;
-        } else { // settings.linkStrippingBehaviour === 'normal'
+        } else if (settings.linkStrippingBehaviour === 'strip') {
+            a.outerHTML = '';
+        } else if (settings.linkStrippingBehaviour === 'text') {
             a.outerHTML = a.innerText;
         }
     }
