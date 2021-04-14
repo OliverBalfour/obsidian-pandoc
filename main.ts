@@ -98,7 +98,7 @@ export default class PandocPlugin extends Plugin {
         try    {
 
             const markdown = (this.app.workspace.activeLeaf.view as any).data;
-            const html = await render(this.settings, markdown, inputFile, this.vaultBasePath());
+            const html = await render(this.settings, markdown, inputFile, this.vaultBasePath(), format);
 
             const outputFile = replaceFileExtension(inputFile, extension);
 

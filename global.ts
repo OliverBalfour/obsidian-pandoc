@@ -16,6 +16,8 @@ export interface PandocPluginSettings {
     customCSSFile: string | null,
     // Do we want to display the YAML frontmatter in the output?
     displayYAMLFrontmatter: boolean,
+    // Do we strip [[wikilinks]] entirely, turn them into normal text, or leave them as links?
+    linkStrippingBehaviour: 'strip' | 'text' | 'link',
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     injectPluginCSS: true,
     customCSSFile: null,
     displayYAMLFrontmatter: false,
+    linkStrippingBehaviour: 'text',
 }
 
 export function replaceFileExtension(file: string, ext: string): string {

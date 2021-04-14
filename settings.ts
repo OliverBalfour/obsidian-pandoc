@@ -51,6 +51,21 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName("Internal link processing")
+            .setDesc("This controls how [[wiki-links]] are formatted. Doesn't affect HTML output.")
+            .addDropdown(dropdown => dropdown
+                .addOptions({
+                    "text": "Turn into text",
+                    "link": "Leave as links",
+                    "strip": "Remove links",
+                })
+                .setValue(this.plugin.settings.linkStrippingBehaviour)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.linkStrippingBehaviour = value as 'strip' | 'text' | 'link';
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName("Show CLI commands (not implemented)")
             .setDesc("For Pandoc's command line interface. The CLI will have slightly different results due to how this plugin works.")
             .addToggle(toggle => toggle

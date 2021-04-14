@@ -18,7 +18,7 @@ import appCSS from './styles/app-css';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
-export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string, parentFiles: string[] = []) {
+export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string, outputFormat: string, parentFiles: string[] = []) {
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const wrapper = document.createElement('div');
     wrapper.style.display = 'hidden';
@@ -26,7 +26,7 @@ export default async function render (settings: PandocPluginSettings, markdown: 
     await MarkdownRenderer.renderMarkdown(markdown, wrapper, path.dirname(inputFile), {} as Component);
 
     // Post-process the HTML in-place
-    await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, parentFiles);
+    await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat, parentFiles);
     const renderedMarkdown = wrapper.innerHTML;
     document.body.removeChild(wrapper);
 
@@ -134,7 +134,7 @@ async function standaloneHTML(settings: PandocPluginSettings, html: string, titl
         `</html>`;
 }
 
-async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement, vaultBasePath: string, parentFiles: string[] = []) {
+async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement, vaultBasePath: string, outputFormat: string, parentFiles: string[] = []) {
     const dirname = path.dirname(inputFile);
     // Fix <span src="image.png">
     for (let span of Array.from(wrapper.querySelectorAll('span[src$=".png"], span[src$=".jpg"], span[src$=".gif"], span[src$=".jpeg"]'))) {
@@ -156,7 +156,7 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
                     const markdown = (await fs.promises.readFile(file)).toString();
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
-                    const html = await render(settings, markdown, file, vaultBasePath, newParentFiles);
+                    const html = await render(settings, markdown, file, vaultBasePath, outputFormat, newParentFiles);
                     span.outerHTML = html;
                 }
             } catch (e) {
@@ -168,21 +168,30 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     // Fix <a href="app://obsidian.md/markdown_file_without_extension">
     const prefix = 'app://obsidian.md/';
     for (let a of Array.from(wrapper.querySelectorAll('a'))) {
-        let href = a.href.startsWith(prefix) ? path.join(dirname, a.href.substring(prefix.length)) : a.href;
-        if (settings.addExtensionsToInternalLinks.length && a.href.startsWith(prefix)) {
-            if (path.extname(href) === '') {
-                const dir = path.dirname(href);
-                const base = path.basename(href);
-                // Be careful to turn [[note#heading]] into note.extension#heading not note#heading.extension
-                const hashIndex = base.indexOf('#');
-                if (hashIndex !== -1) {
-                    href = path.join(dir, base.substring(0, hashIndex) + '.' + settings.addExtensionsToInternalLinks + base.substring(hashIndex));
-                } else {
-                    href = path.join(dir, base + '.' + settings.addExtensionsToInternalLinks);
+        if (!a.href.startsWith(prefix)) continue;
+        // This is now an internal link (wikilink)
+        if (settings.linkStrippingBehaviour === 'strip') {
+            a.outerHTML = '';
+            continue;
+        } else if (settings.linkStrippingBehaviour === 'link') {
+            let href = path.join(dirname, a.href.substring(prefix.length));
+            if (settings.addExtensionsToInternalLinks.length && a.href.startsWith(prefix)) {
+                if (path.extname(href) === '') {
+                    const dir = path.dirname(href);
+                    const base = path.basename(href);
+                    // Be careful to turn [[note#heading]] into note.extension#heading not note#heading.extension
+                    const hashIndex = base.indexOf('#');
+                    if (hashIndex !== -1) {
+                        href = path.join(dir, base.substring(0, hashIndex) + '.' + settings.addExtensionsToInternalLinks + base.substring(hashIndex));
+                    } else {
+                        href = path.join(dir, base + '.' + settings.addExtensionsToInternalLinks);
+                    }
                 }
             }
+            a.href = href;
+        } else { // settings.linkStrippingBehaviour === 'normal'
+            a.outerHTML = a.innerText;
         }
-        a.href = href;
     }
     // Fix <img src="app://obsidian.md/image.png">
     // Note: this will throw errors when Obsidian tries to load images with a (now invalid) src
