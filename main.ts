@@ -98,7 +98,7 @@ export default class PandocPlugin extends Plugin {
         try    {
 
             const markdown = (this.app.workspace.activeLeaf.view as any).data;
-            const html = await render(this.settings, markdown, inputFile, this.vaultBasePath(), format);
+            const { html, title } = await render(this.settings, markdown, inputFile, this.vaultBasePath(), format);
 
             const outputFile = replaceFileExtension(inputFile, extension);
 
@@ -106,7 +106,7 @@ export default class PandocPlugin extends Plugin {
             if (format === 'html') {
                 await fs.promises.writeFile(outputFile, html);
             } else {
-                await pandoc({ file: 'STDIN', contents: html, format: 'html' }, { file: outputFile, format });
+                await pandoc({ file: 'STDIN', contents: html, format: 'html', title }, { file: outputFile, format });
 
                 // Old method: get Pandoc's AST as JSON and apply filters
                 // This is no longer necessary as the HTML has everything we need

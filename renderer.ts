@@ -18,7 +18,7 @@ import appCSS from './styles/app-css';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
-export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string, outputFormat: string, parentFiles: string[] = []) {
+export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string, outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, title: string }> {
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const wrapper = document.createElement('div');
     wrapper.style.display = 'hidden';
@@ -32,15 +32,15 @@ export default async function render (settings: PandocPluginSettings, markdown: 
 
     // Make the HTML a standalone document - inject CSS, a <title>, etc.
     let html;
+    const title = getTitle(markdown, inputFile);
     if (parentFiles.length === 0) {
-        const title = getTitle(markdown, inputFile);
         html = await standaloneHTML(settings, renderedMarkdown, title, vaultBasePath);
     } else {
         // Embedded notes don't need CSS injected
         html = renderedMarkdown;
     }
 
-    return html;
+    return { html, title };
 }
 
 // Takes any file path like '/home/oliver/zettelkasten/Obsidian.md' and
@@ -157,7 +157,7 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
                     const html = await render(settings, markdown, file, vaultBasePath, outputFormat, newParentFiles);
-                    span.outerHTML = html;
+                    span.outerHTML = html.html;
                 }
             } catch (e) {
                 // Continue if it can't be loaded
