@@ -1,6 +1,6 @@
 {
   "name": "obsidian-pandoc-plugin",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "This is a Pandoc export plugin for Obsidian (https://obsidian.md)",
   "main": "main.js",
   "scripts": {

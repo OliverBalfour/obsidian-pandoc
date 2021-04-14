@@ -25,7 +25,7 @@ export interface PandocPluginSettings {
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
-    showCLICommands: true,
+    showCLICommands: false,
     addExtensionsToInternalLinks: 'html',
     injectMathJaxCSS: true,
     injectAppCSS: true,

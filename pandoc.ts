@@ -55,9 +55,6 @@ export const outputFormats = [
     ['Reveal.js Slides', 'revealjs', 'reveal.html', 'Reveal.js']
 ];
 
-export function needsLaTeX(format: OutputFormat): boolean {
-    return format !== 'latex' && format !== 'pdf';
-}
 export interface PandocInput {
     file: AbsoluteFilePath | URLString | 'STDIN',  // if STDIN, the contents parameter must exist
     format?: InputFormat,  // -f/--from format, if left blank it's inferred by Pandoc
@@ -68,6 +65,23 @@ export interface PandocInput {
 export interface PandocOutput {
     file: AbsoluteFilePath | 'STDOUT', // if STDOUT, the promise will resolve to a string
     format?: OutputFormat,  // -t/--to format, inferred if blank
+}
+
+export function needsLaTeX(format: OutputFormat): boolean {
+    return format !== 'latex' && format !== 'pdf';
+}
+
+export function needsStandaloneFlag(output: PandocOutput): boolean {
+    return output.file.endsWith('html')
+        || output.format === 'html'
+        || output.format === 'revealjs'
+        || output.format === 'latex';
+}
+
+// Note: we apply Unicode stripping for STDIN, otherwise you're on your own
+export function needsUnicodeStripped(output: PandocOutput): boolean {
+    return output.format === 'latex'
+        || output.format === 'pdf';
 }
 
 // Note: extraParams is a list of strings like ['-o', 'file.md']
@@ -87,7 +101,7 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
     let args: string[] = [];
 
     // The title is needed for ePub and standalone HTML formats
-    const title = input.title ? input.title : fileBaseName(input.file);
+    const title = input.title || fileBaseName(input.file);
     args.push('--metadata', `title=${title}`);
     if (input.format) {
         args.push('--from');
@@ -97,7 +111,7 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         args.push('--to');
         args.push(output.format);
     }
-    if (output.format === 'html' || output.file.endsWith('.html') || output.format === 'revealjs')
+    if (needsStandaloneFlag(output))
         args.push('-s');
     if (!stdout) {
         args.push('-o');
@@ -123,7 +137,10 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         pandoc = spawn('pandoc', args);
 
         if (stdin) {
-            pandoc.stdin.write(input.contents);
+            const contents = needsUnicodeStripped(output)
+                ? input.contents.replace(/[^\x00-\x7F]/g, "")
+                : input.contents;
+            pandoc.stdin.write(contents);
             pandoc.stdin.end();
         }
 

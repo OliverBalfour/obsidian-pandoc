@@ -108,7 +108,8 @@ export default class PandocPlugin extends Plugin {
             } else {
                 // Spawn Pandoc
                 const { error, command } = await pandoc({ file: 'STDIN', contents: html, format: 'html', title }, { file: outputFile, format });
-                if (error.length) {
+                // Never give warnings for plain-text exports
+                if (error.length && format !== 'plain') {
                     new Notice('Exported via Pandoc to ' + outputFile + ' with warnings');
                     new Notice('Pandoc warnings:' + error, 10000);
                 } else {
