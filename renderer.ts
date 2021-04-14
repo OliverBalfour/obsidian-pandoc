@@ -114,14 +114,14 @@ async function standaloneHTML(settings: PandocPluginSettings, html: string, titl
 
     return `<!doctype html>\n` +
         `<html>\n` +
-        `	<head>\n` +
-        `		<title>${title}</title>\n` +
-        `		<meta charset='utf-8'/>\n` +
-        `		<style>\n${css}\n</style>\n` +
-        `	</head>\n` +
-        `	<body>\n` +
+        `    <head>\n` +
+        `        <title>${title}</title>\n` +
+        `        <meta charset='utf-8'/>\n` +
+        `        <style>\n${css}\n</style>\n` +
+        `    </head>\n` +
+        `    <body>\n` +
         `${html}\n` +
-        `	</body>\n` +
+        `    </body>\n` +
         `</html>`;
 }
 
