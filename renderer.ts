@@ -11,6 +11,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 import { MarkdownRenderer, Component, Notice } from 'obsidian';
+import PurgeCSS from 'purgecss';
+import * as csso from 'csso';
 
 import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
@@ -114,6 +116,25 @@ async function getDesiredCSS(settings: PandocPluginSettings, html: string, vault
         css += ' ' + mathJaxFontCSS;
     // Inject custom local CSS file if it exists
     css += await getCustomCSS(settings, vaultBasePath);
+    // Purge unused CSS and minify if desired
+    if (settings.purgeAndMinifyCSS) {
+        try {
+            const purged = await new PurgeCSS().purge({
+                content: [{ raw: html, extension: 'html' }],
+                css: [{ raw: css }]
+            });
+            css = purged[0].css;
+        } catch (e) {
+            console.error("Pandoc plugin could not purge unused CSS via PurgeCSS: " + e.toString());
+        }
+        try {
+            css = csso.minify(css).css;
+        } catch (e) {
+            console.error("Pandoc plugin could not minify CSS via CSSO: " + e.toString());
+        }
+        // For some reason the fonts are stripped
+        css += ' body { font-family: var(--default-font); }';
+    }
     return css;
 }
 

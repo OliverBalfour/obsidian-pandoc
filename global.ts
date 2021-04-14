@@ -22,6 +22,8 @@ export interface PandocPluginSettings {
     linkStrippingBehaviour: 'strip' | 'text' | 'link',
     // Do we render SVGs at 2x the size?
     highDPIDiagrams: boolean,
+    // Purge unused CSS and minify it?
+    purgeAndMinifyCSS: boolean,
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     displayYAMLFrontmatter: false,
     linkStrippingBehaviour: 'text',
     highDPIDiagrams: true,
+    purgeAndMinifyCSS: true,
 }
 
 export function replaceFileExtension(file: string, ext: string): string {

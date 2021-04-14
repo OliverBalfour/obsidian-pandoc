@@ -95,6 +95,16 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName("Minify and remove unused CSS (recommended)")
+            .setDesc("This will reduce the file size of HTML exports a lot. Only disable if it's too slow or the output looks wrong.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.purgeAndMinifyCSS)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.purgeAndMinifyCSS = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName("Inject MathJax CSS into HTML output")
             .setDesc("Only applies to files containing math. This makes math look good, but the files become bigger.")
             .addToggle(toggle => toggle

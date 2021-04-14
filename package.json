@@ -12,8 +12,10 @@
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^15.1.0",
+    "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "@rollup/plugin-typescript": "^6.0.0",
+    "@types/csso": "^3.5.1",
     "@types/node": "^14.14.2",
     "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
     "rollup": "^2.32.1",
@@ -21,6 +23,8 @@
     "typescript": "^4.0.3"
   },
   "dependencies": {
-    "lookpath": "^1.2.0"
+    "csso": "^4.2.0",
+    "lookpath": "^1.2.0",
+    "purgecss": "^4.0.3"
   }
 }
