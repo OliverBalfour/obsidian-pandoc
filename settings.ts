@@ -66,8 +66,8 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName("Show CLI commands (not implemented)")
-            .setDesc("For Pandoc's command line interface. The CLI will have slightly different results due to how this plugin works.")
+            .setName("Show Pandoc command line interface commands")
+            .setDesc("Doesn't apply to HTML exports. Using the CLI will have slightly different results due to how this plugin works.")
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showCLICommands)
                 .onChange(async (value: boolean) => {

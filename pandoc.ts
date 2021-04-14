@@ -12,6 +12,8 @@
 import { stat, Stats } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
+import { lookpath } from 'lookpath';
 
 // Pandoc CLI syntax
 // pandoc -f markdown -s -t html -o output.html input.md
@@ -37,20 +39,20 @@ export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
   | 'html' | 'ipynb' | 'pdf' | 'json' | 'latex' | 'odt' | 'plain' | 'pptx' | 'revealjs';
 
-// List of [pretty name, pandoc format name, file extension]
+// List of [pretty name, pandoc format name, file extension, shortened pretty name]
 export const outputFormats = [
-    ['AsciiDoc (adoc)', 'asciidoc', 'adoc'],
-    ['Word Document (docx)', 'docx', 'docx'],
-    ['Pandoc Markdown', 'markdown', 'pandoc.md'],  // X.md -> X.pandoc.md to avoid conflict
-    ['HTML (without Pandoc)','html','html'],
-    ['LaTeX', 'latex', 'tex'],
-    ['OpenDocument (odt)', 'odt', 'odt'],
-    ['Plain Text (txt)', 'plain', 'txt'],
-    ['PowerPoint (pptx)', 'pptx', 'pptx'],
-    ['ePub', 'epub', 'epub'],
-    ['PDF (via LaTeX)', 'pdf', 'pdf'],
-    ['Jupyter Notebook', 'ipynb', 'ipynb'],
-    ['Reveal.js Slides', 'revealjs', 'reveal.html']
+    ['AsciiDoc (adoc)', 'asciidoc', 'adoc', 'AsciiDoc'],
+    ['Word Document (docx)', 'docx', 'docx', 'Word'],
+    ['Pandoc Markdown', 'markdown', 'pandoc.md', 'markdown'],  // X.md -> X.pandoc.md to avoid conflict
+    ['HTML (without Pandoc)','html','html', 'HTML'],
+    ['LaTeX', 'latex', 'tex', 'LaTeX'],
+    ['OpenDocument (odt)', 'odt', 'odt', 'OpenDocument'],
+    ['Plain Text (txt)', 'plain', 'txt', 'plain text'],
+    ['PowerPoint (pptx)', 'pptx', 'pptx', 'PowerPoint'],
+    ['ePub', 'epub', 'epub', 'ePub'],
+    ['PDF (via LaTeX)', 'pdf', 'pdf', 'PDF'],
+    ['Jupyter Notebook', 'ipynb', 'ipynb', 'Jupyter'],
+    ['Reveal.js Slides', 'revealjs', 'reveal.html', 'Reveal.js']
 ];
 
 export function needsLaTeX(format: OutputFormat): boolean {
@@ -69,7 +71,9 @@ export interface PandocOutput {
 }
 
 // Note: extraParams is a list of strings like ['-o', 'file.md']
-export const pandoc = async (input: PandocInput, output: PandocOutput, extraParams?: string[]) : Promise<string | null> => new Promise((resolve, reject) => {
+// This rejects if the file doesn't get created
+export const pandoc = async (input: PandocInput, output: PandocOutput, extraParams?: string[])
+    : Promise<{ result: string, command: string, error: string }> => new Promise(async (resolve, reject) => {
     const stdin = input.file === 'STDIN';
     const stdout = output.file === 'STDOUT';
 
@@ -102,6 +106,9 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         args.push('-o');
         args.push('-');
     }
+    // // Support Unicode in the PDF output if XeLaTeX is installed
+    if (output.format === 'pdf' && await lookpath('xelatex'))
+        args.push('--pdf-engine=xelatex');
     if (!stdin) {
         args.push(input.file);
     }
@@ -128,11 +135,27 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
             error += err;
         });
         pandoc.stdout.on('end', () => {
-            // TODO: need a way to handle warnings vs errors here and in the UI
-            if (error.length) {
-                reject(new Error(error));
+            const value = {
+                result, error,
+                command: 'pandoc ' + args.join(' ')
+            };
+            if (output.file !== 'STDOUT') {
+                fs.stat(output.file, (err: NodeJS.ErrnoException | null, stats: fs.Stats) => {
+                    // Call resolve if the file exists, reject otherwise
+                    if (stats && stats.isFile()) {
+                        resolve(value);
+                    } else {
+                        reject(error);
+                    }
+                });
             } else {
-                resolve(stdout ? result : null);
+                // Call resolve iff there is a nonempty result
+                (result.length ? resolve : reject)(value);
+                if (result.length) {
+                    resolve(value);
+                } else {
+                    reject(error);
+                }
             }
         });
     }

@@ -1,4 +1,6 @@
 
+import * as fs from 'fs';
+
 export interface PandocPluginSettings {
     // Show a command like `pandoc -o Output.html -t html -f commonmark Input.md`
     //  in the UI as an example of how to do something similar in the terminal
@@ -38,4 +40,13 @@ export function replaceFileExtension(file: string, ext: string): string {
     // Source: https://stackoverflow.com/a/5953384/4642943
     let pos = file.lastIndexOf('.');
     return file.substr(0, pos < 0 ? file.length : pos) + '.' + ext;
+}
+
+export async function fileExists(path: string): Promise<boolean> {
+    try {
+        const stats = await fs.promises.stat(path);
+        return stats && stats.isFile();
+    } catch (e) {
+        return false;
+    }
 }
