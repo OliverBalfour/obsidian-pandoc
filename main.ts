@@ -2,7 +2,7 @@
 /*
  * main.ts
  *
- * Initialises the plugin, adds command palette options, creates the settings UI
+ * Initialises the plugin, adds command palette options, adds the settings UI
  * Markdown processing is done in renderer.ts and Pandoc invocation in pandoc.ts
  *
  */
@@ -15,6 +15,7 @@ import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX } from './pandoc';
 
 import render from './renderer';
+import PandocPluginSettingTab from './settings';
 import { PandocPluginSettings, DEFAULT_SETTINGS, replaceFileExtension } from './global';
 export default class PandocPlugin extends Plugin {
 	settings: PandocPluginSettings;
@@ -141,98 +142,5 @@ export default class PandocPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-class PandocPluginSettingTab extends PluginSettingTab {
-	plugin: PandocPlugin;
-	errorMessages: { [key: string]: string } = {
-		pandoc: "Pandoc is not installed or accessible on your PATH. This plugin's functionality will be limited.",
-		latex: "LaTeX is not installed or accessible on your PATH. Please install it if you want PDF exports via LaTeX.",
-	}
-
-	constructor(app: App, plugin: PandocPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		let { containerEl } = this;
-
-		containerEl.empty();
-
-		containerEl.createEl('h3', {text: 'Pandoc Plugin'});
-
-		const createError = (text: string) =>
-			containerEl.createEl('p', { cls: 'pandoc-plugin-error', text });
-		
-		for (const binary of this.plugin.programs) {
-			const path = this.plugin.features[binary];
-			if (path === undefined) {
-				createError(this.errorMessages[binary]);
-			}
-		}
-
-		new Setting(containerEl)
-			.setName("Custom CSS file for HTML output")
-			.setDesc("This local CSS file will be read and injected into HTML exports. Use an absolute path or a path relative to the vault.")
-			.addText(text => text
-				.setPlaceholder('File name')
-				.setValue(this.plugin.settings.customCSSFile)
-				.onChange(async (value: string) => {
-					if (!value.length) this.plugin.settings.customCSSFile = null;
-					else this.plugin.settings.customCSSFile = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName("Show CLI commands (not implemented)")
-			.setDesc("For Pandoc's command line interface. The CLI will have slightly different results due to how this plugin works.")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.showCLICommands)
-				.onChange(async (value: boolean) => {
-					this.plugin.settings.showCLICommands = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName("Inject MathJax CSS into HTML output")
-			.setDesc("Only applies to files containing math. This makes math look good, but the files become bigger.")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.injectMathJaxCSS)
-				.onChange(async (value: boolean) => {
-					this.plugin.settings.injectMathJaxCSS = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName("Use the light theme CSS in HTML output")
-			.setDesc("This uses the default Obsidian light theme colours.")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.injectAppCSS)
-				.onChange(async (value: boolean) => {
-					this.plugin.settings.injectAppCSS = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName("Inject community plugin CSS (HTML output only)")
-			.setDesc("This styles any 3rd party embeds, but the files become bigger.")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.injectPluginCSS)
-				.onChange(async (value: boolean) => {
-					this.plugin.settings.injectPluginCSS = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName("[[Wikilink]] resolution file extension")
-			.setDesc("If specified, it turns [[note#heading]] to <a href='note.extension#heading'> instead of <a href='note#heading'>")
-			.addText(text => text
-				.setPlaceholder('File extension (eg "md" or "html")')
-				.setValue(this.plugin.settings.addExtensionsToInternalLinks)
-				.onChange(async (value: string) => {
-					this.plugin.settings.addExtensionsToInternalLinks = value;
-					await this.plugin.saveSettings();
-				}));
 	}
 }
