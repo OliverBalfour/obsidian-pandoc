@@ -211,6 +211,9 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
         // TODO: it injects light theme CSS, do we want this?
         let style: HTMLStyleElement = svg.querySelector('style') || svg.appendChild(document.createElement('style'));
         style.innerHTML += appCSSVariables;
+        // Inject a marker (arrowhead) for Mermaid.js diagrams and use it at the end of paths
+        svg.innerHTML += `"<marker id="mermaid_arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="strokeWidth" markerWidth="8" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowheadPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker>"`;
+        svg.innerHTML = svg.innerHTML.replace(/app:\/\/obsidian\.md\/index\.html#arrowhead\d*/g, "#mermaid_arrowhead");
         // If the output isn't HTML, replace the SVG with a PNG for compatibility
         if (outputFormat !== 'html') {
             const scale = settings.highDPIDiagrams ? 2 : 1;
