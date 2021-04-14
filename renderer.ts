@@ -209,7 +209,6 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
             .forEach(el => wrapper.removeChild(el));
     }
     // Fix Mermaid.js diagrams
-    // convertSVGToPNG(svg: SVGSVGElement, css ?: string): Promise<HTMLImageElement>
     for (let svg of Array.from(wrapper.querySelectorAll('svg'))) {
         // Insert the CSS variables as a CSS string (even if the user doesn't want CSS injected; Mermaid diagrams look terrible otherwise)
         // TODO: it injects light theme CSS, do we want this?
