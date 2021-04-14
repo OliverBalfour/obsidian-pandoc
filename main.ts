@@ -1,36 +1,21 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter, MarkdownRenderer, Component } from 'obsidian';
-import { lookpath } from 'lookpath';
-import { pandoc, inputExtensions, outputFormats, InputFormat, OutputFormat } from './pandoc';
-import fontFace from './font-face';
-import appcss from './appcss';
+
+/*
+ * main.ts
+ *
+ * Initialises the plugin, adds command palette options, creates the settings UI
+ * Markdown processing is done in renderer.ts and Pandoc invocation in pandoc.ts
+ *
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 
-interface PandocPluginSettings {
-	// Show a command like `pandoc -o Output.html -t html -f commonmark Input.md`
-	//  in the UI as an example of how to do something similar in the terminal
-	showCLICommands: boolean;
-	// When rendering internal [[wikilinks]], should we add a file extension?
-	// eg turns <a href="file"> to <a href="file.extension">
-	addExtensionsToInternalLinks: string,
-	// Do we inject CSS to add proper MathJax fonts, if there are math equations?
-	injectMathJaxCSS: boolean,
-	// Do we inject the default Obsidian light theme styling? This may cause licensing issues
-	injectAppCSS: boolean,
-	// Do we inject 3rd party plugin CSS?
-	injectPluginCSS: boolean,
-	// Use a custom local .css file?
-	customCSSFile: string | null,
-}
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter, MarkdownRenderer, Component } from 'obsidian';
+import { lookpath } from 'lookpath';
+import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX } from './pandoc';
 
-const DEFAULT_SETTINGS: PandocPluginSettings = {
-	showCLICommands: true,
-	addExtensionsToInternalLinks: 'html',
-	injectMathJaxCSS: true,
-	injectAppCSS: true,
-	injectPluginCSS: true,
-	customCSSFile: null,
-}
+import render from './renderer';
+import { PandocPluginSettings, DEFAULT_SETTINGS, replaceFileExtension } from './global';
 export default class PandocPlugin extends Plugin {
 	settings: PandocPluginSettings;
 	programs = ['pandoc', 'latex'];
@@ -38,7 +23,6 @@ export default class PandocPlugin extends Plugin {
 
 	async onload() {
 		console.log('Loading Pandoc plugin');
-
 		await this.loadSettings();
 
 		// Check if Pandoc, LaTeX, etc. are installed and in the PATH
@@ -52,9 +36,9 @@ export default class PandocPlugin extends Plugin {
 
 	registerCommands() {
 		for (let [prettyName, pandocFormat, extension] of outputFormats) {
-			if (pandocFormat === 'latex' && !this.features['latex']) continue;
-			const name = pandocFormat === 'html' ?
-				'Export as HTML (without Pandoc)' : 'Export as ' + prettyName;
+			if (needsLaTeX(pandocFormat as OutputFormat)
+				&& !this.features['latex']) continue;
+			const name = 'Export as ' + prettyName;
 			this.addCommand({
 				id: 'pandoc-export-' + pandocFormat, name,
 				checkCallback: (checking: boolean) => {
@@ -111,20 +95,11 @@ export default class PandocPlugin extends Plugin {
 		// This allows us to trivially deal with Obsidian specific Markdown syntax.
 
 		try	{
-			// Extract HTML
-			const wrapper = document.createElement('div');
-			wrapper.style.display = 'hidden';
-			document.body.appendChild(wrapper);
-			const markdown = (this.app.workspace.activeLeaf.view as any).data;
-			await MarkdownRenderer.renderMarkdown(markdown, wrapper, this.fileBaseName(this.getCurrentFile()), {} as Component);
-			await this.postProcessRenderedMarkdown(wrapper);
-			const renderedMarkdown = wrapper.innerHTML;
-			document.body.removeChild(wrapper);
 
-			// Process HTML
-			const title = this.fileBaseName(inputFile);
-			const outputFile = this.replaceFileExtension(inputFile, extension);
-			const html = await this.standaloneHTML(renderedMarkdown, title);
+			const markdown = (this.app.workspace.activeLeaf.view as any).data;
+			const html = await render(this.settings, markdown, inputFile, this.vaultBasePath());
+
+			const outputFile = replaceFileExtension(inputFile, extension);
 
 			// Spawn Pandoc / write to HTML file
 			if (format === 'html') {
@@ -154,109 +129,6 @@ export default class PandocPlugin extends Plugin {
 			new Notice('Pandoc error: ' + e.toString());
 			console.error(e);
 		}
-	}
-
-	async getCustomCSS(): Promise<string> {
-		if (!this.settings.customCSSFile) return;
-		let file = this.settings.customCSSFile;
-		let buffer: Buffer = null;
-		// Try absolute path
-		try {
-			let test = await fs.promises.readFile(file);
-			buffer = test;
-		} catch (e) {}
-		// Try relative path
-		try {
-			let test = await fs.promises.readFile(path.join(this.vaultBasePath(), file));
-			buffer = test;
-		} catch (e) {}
-		if (!buffer) {
-			new Notice('Failed to load custom Pandoc CSS file: ' + this.settings.customCSSFile);
-			return '';
-		} else {
-			return buffer.toString();
-		}
-	}
-
-	async standaloneHTML(html: string, title: string): Promise<string> {
-		// Wraps an HTML fragment in a proper document structure
-		//  and injects the page's CSS
-		let css = '';
-		// Inject app CSS if the user wants it
-		if (this.settings.injectAppCSS) css = appcss;
-		// Inject plugin CSS if the user wants it
-		if (this.settings.injectPluginCSS)
-			css += ' ' + Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join(' ');
-		// Inject MathJax font CSS if needed
-		if (this.settings.injectMathJaxCSS && html.indexOf('jax="CHTML"') !== -1) css += ' ' + fontFace;
-		// Inject custom local CSS file if it exists
-		css += await this.getCustomCSS();
-		return `<!doctype html>\n` +
-			   `<html>\n` +
-			   `	<head>\n` +
-			   `		<title>${title}</title>\n` +
-			   `		<meta charset='utf-8'/>\n` +
-			   `		<style>\n${css}\n</style>\n` +
-			   `	</head>\n` +
-			   `	<body>\n` +
-			   `${html}\n` +
-			   `	</body>\n` +
-			   `</html>`;
-	}
-
-	async postProcessRenderedMarkdown(wrapper: HTMLElement) {
-		// Fix <span src="image.png">
-		for (let span of Array.from(wrapper.querySelectorAll('span[src$=".png"], span[src$=".jpg"], span[src$=".gif"], span[src$=".jpeg"]'))) {
-			span.innerHTML = '';
-			span.outerHTML = span.outerHTML.replace(/span/g, 'img');
-		}
-		// Fix <a href="app://obsidian.md/markdown_file_without_extension">
-		const prefix = 'app://obsidian.md/';
-		for (let a of Array.from(wrapper.querySelectorAll('a'))) {
-			let href = a.href.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), a.href.substring(prefix.length)) : a.href;
-			if (this.settings.addExtensionsToInternalLinks.length && a.href.startsWith(prefix)) {
-				if (path.extname(href) === '') {
-					const dir = path.dirname(href);
-					const base = path.basename(href);
-					// Be careful to turn [[note#heading]] into note.extension#heading not note#heading.extension
-					const hashIndex = base.indexOf('#');
-					if (hashIndex !== -1) {
-						href = path.join(dir, base.substring(0, hashIndex) + '.' + this.settings.addExtensionsToInternalLinks + base.substring(hashIndex));
-					} else {
-						href = path.join(dir, base + '.' + this.settings.addExtensionsToInternalLinks);
-					}
-				}
-			}
-			a.href = href;
-		}
-		// Fix <img src="app://obsidian.md/image.png">
-		for (let img of Array.from(wrapper.querySelectorAll('img'))) {
-			img.src = img.src.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), img.src.substring(prefix.length)) : img.src;
-		}
-		// Fix <span class='internal-embed' src='another_note_without_extension'>
-		for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
-			let src = span.getAttribute('src');
-			if (src) {
-				const file = path.join(this.vaultBasePath(), src + '.md');
-				try {
-					const result = (await fs.promises.readFile(file)).toString();
-					span.outerHTML = ''; // TODO: process result to postprocessed HTML WITHOUT triggering an infinite loop if you have recursively embedded notes
-				} catch (e) {
-					// Continue if it can't be loaded
-					console.error("Pandoc plugin encountered an error trying to load an embedded note: " + e.toString());
-				}
-			}
-		}
-	}
-
-	fileBaseName(file: string): string {
-		return path.basename(file, path.extname(file));
-	}
-
-	replaceFileExtension(file: string, ext: string): string {
-		// Source: https://stackoverflow.com/a/5953384/4642943
-		let pos = file.lastIndexOf('.');
-		return file.substr(0, pos < 0 ? file.length : pos) + '.' + ext;
 	}
 
 	onunload() {

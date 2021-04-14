@@ -1,5 +1,13 @@
 
-// Inspired by https://github.com/eshinn/node-pandoc
+/*
+ * pandoc.ts
+ *
+ * This module handles spawning Pandoc, passing it arguments, and streaming
+ * to/from STDIN/STDOUT buffers if desired.
+ *
+ * Loosely based on https://github.com/eshinn/node-pandoc (MIT licensed)
+ *
+ */
 
 import { stat, Stats } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
@@ -34,7 +42,7 @@ export const outputFormats = [
 	['AsciiDoc (adoc)', 'asciidoc', 'adoc'],
 	['Word Document (docx)', 'docx', 'docx'],
 	['Pandoc Markdown', 'markdown', 'pandoc.md'],  // X.md -> X.pandoc.md to avoid conflict
-	['HTML','html','html'],
+	['HTML (without Pandoc)','html','html'],
 	['LaTeX', 'latex', 'tex'],
 	['OpenDocument (odt)', 'odt', 'odt'],
 	['Plain Text (txt)', 'plain', 'txt'],
@@ -44,6 +52,10 @@ export const outputFormats = [
 	['Jupyter Notebook', 'ipynb', 'ipynb'],
 	['Reveal.js Slides', 'revealjs', 'reveal.html']
 ];
+
+export function needsLaTeX(format: OutputFormat): boolean {
+	return format !== 'latex' && format !== 'pdf';
+}
 export interface PandocInput {
 	file: AbsoluteFilePath | URLString | 'STDIN',  // if STDIN, the contents parameter must exist
 	format?: InputFormat,  // -f/--from format, if left blank it's inferred by Pandoc
