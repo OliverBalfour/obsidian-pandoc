@@ -29,8 +29,7 @@ export default async function (settings: PandocPluginSettings, markdown: string,
     document.body.removeChild(wrapper);
 
     // Make the HTML a standalone document - inject CSS, a <title>, etc.
-    // TODO: use parseFrontMatterTags to get YAML titles and override the note title (#3)
-    const title = fileBaseName(inputFile);
+    const title = getTitle(markdown, inputFile);
     const html = await standaloneHTML(settings, renderedMarkdown, title, vaultBasePath);
 
     return html;
@@ -40,6 +39,33 @@ export default async function (settings: PandocPluginSettings, markdown: string,
 // takes the base name, in this case 'Obsidian'
 function fileBaseName(file: string): string {
     return path.basename(file, path.extname(file));
+}
+
+// Chooses a suitable title for the document
+// Uses the YAML frontmatter title field, falling back on the file base name
+function getTitle(markdown: string, filename: string): string {
+    // Try to extract a YAML frontmatter title using highly inefficient
+    // string matching. Performance isn't too problematic as this is called
+    // rarely, and I think it's still O(n), just with a large constant
+    // TODO: can I use obsidian.parseFrontMatter* instead of doing it manually?
+    markdown = markdown.trim();
+    if (markdown.startsWith('---')) {
+        const trailing = markdown.substring(3);
+        const frontmatter = trailing.substring(0, trailing.indexOf('---')).trim();
+        const lines = frontmatter.split('\n').map(x => x.trim());
+        for (const line of lines) {
+            if (line.startsWith('title:')) {
+                // Assume the title goes to the end of the line, and that
+                // quotes are not intended to be in the filename
+                // This certainly won't be YAML spec compliant
+                let title = line.substring('title:'.length).trim();
+                title.replace(/"/g, '');
+                return title;
+            }
+        }
+    }
+    // Fall back on file name
+    return fileBaseName(filename);
 }
 
 async function getCustomCSS(settings: PandocPluginSettings, vaultBasePath: string): Promise<string> {
