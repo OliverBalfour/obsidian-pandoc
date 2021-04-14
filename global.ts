@@ -18,6 +18,8 @@ export interface PandocPluginSettings {
     displayYAMLFrontmatter: boolean,
     // Do we strip [[wikilinks]] entirely, turn them into normal text, or leave them as links?
     linkStrippingBehaviour: 'strip' | 'text' | 'link',
+    // Do we render SVGs at 2x the size?
+    highDPIDiagrams: boolean,
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     customCSSFile: null,
     displayYAMLFrontmatter: false,
     linkStrippingBehaviour: 'text',
+    highDPIDiagrams: true,
 }
 
 export function replaceFileExtension(file: string, ext: string): string {

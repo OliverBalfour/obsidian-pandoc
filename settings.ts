@@ -85,6 +85,16 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName("High DPI Mermaid diagrams")
+            .setDesc("Renders Mermaid diagrams at twice the resolution. Try toggling if diagrams look bad.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.highDPIDiagrams)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.highDPIDiagrams = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName("Inject MathJax CSS into HTML output")
             .setDesc("Only applies to files containing math. This makes math look good, but the files become bigger.")
             .addToggle(toggle => toggle

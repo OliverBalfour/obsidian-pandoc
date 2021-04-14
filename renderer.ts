@@ -14,7 +14,8 @@ import { MarkdownRenderer, Component, Notice } from 'obsidian';
 
 import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
-import appCSS from './styles/app-css';
+import appCSS, { variables as appCSSVariables } from './styles/app-css';
+import { outputFormats } from 'pandoc';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
@@ -203,4 +204,41 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
         Array.from(wrapper.querySelectorAll('.frontmatter, .frontmatter-container'))
             .forEach(el => wrapper.removeChild(el));
     }
+    // Fix Mermaid.js diagrams
+    // convertSVGToPNG(svg: SVGSVGElement, css ?: string): Promise<HTMLImageElement>
+    for (let svg of Array.from(wrapper.querySelectorAll('svg'))) {
+        // Insert the CSS variables as a CSS string (even if the user doesn't want CSS injected; Mermaid diagrams look terrible otherwise)
+        // TODO: it injects light theme CSS, do we want this?
+        let style: HTMLStyleElement = svg.querySelector('style') || svg.appendChild(document.createElement('style'));
+        style.innerHTML += appCSSVariables;
+        // If the output isn't HTML, replace the SVG with a PNG for compatibility
+        if (outputFormat !== 'html') {
+            const scale = settings.highDPIDiagrams ? 2 : 1;
+            const png = await convertSVGToPNG(svg, scale);
+            svg.parentNode.replaceChild(png, svg);
+        }
+    }
+}
+
+// This creates an unmounted <img> element with a transparent background PNG data URL as the src
+// The scale parameter is used for high DPI renders (the <img> element size is the same,
+//  but the underlying PNG is higher resolution)
+function convertSVGToPNG(svg: SVGSVGElement, scale: number = 1): Promise<HTMLImageElement> {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(svg.width.baseVal.value * scale);
+    canvas.height = Math.ceil(svg.height.baseVal.value * scale);
+    const ctx = canvas.getContext('2d');
+    var svgImg = new Image;
+    svgImg.src = "data:image/svg+xml;base64," + btoa(svg.outerHTML);
+    return new Promise((resolve, reject) => {
+        svgImg.onload = () => {
+            ctx.drawImage(svgImg, 0, 0, canvas.width, canvas.height);
+            const pngData = canvas.toDataURL('png');
+            const img = document.createElement('img');
+            img.src = pngData;
+            img.width = Math.ceil(svg.width.baseVal.value);
+            img.height = Math.ceil(svg.height.baseVal.value);
+            resolve(img);
+        };
+    });
 }
