@@ -27,7 +27,7 @@ export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 // Subset of output formats, will add more later
 // Note: you need a `-o -` in the command to output odt, docx, epub or pdf output (presumably as they are binary formats or something)
 export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
-  | 'html' | 'ipynb' | 'pdf' | 'json' | 'latex' | 'odt' | 'plain' | 'pptx';
+  | 'html' | 'ipynb' | 'pdf' | 'json' | 'latex' | 'odt' | 'plain' | 'pptx' | 'revealjs';
 
 // List of [pretty name, pandoc format name, file extension]
 export const outputFormats = [
@@ -42,6 +42,7 @@ export const outputFormats = [
 	['ePub', 'epub', 'epub'],
 	['PDF (via LaTeX)', 'pdf', 'pdf'],
 	['Jupyter Notebook', 'ipynb', 'ipynb'],
+	['Reveal.js Slides', 'revealjs', 'reveal.html']
 ];
 export interface PandocInput {
 	file: AbsoluteFilePath | URLString | 'STDIN',  // if STDIN, the contents parameter must exist
@@ -80,7 +81,7 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
 		args.push('--to');
 		args.push(output.format);
 	}
-	if (output.format === 'html' || output.file.endsWith('.html'))
+	if (output.format === 'html' || output.file.endsWith('.html') || output.format === 'revealjs')
 		args.push('-s');
 	if (!stdout) {
 		args.push('-o');

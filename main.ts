@@ -117,7 +117,7 @@ export default class PandocPlugin extends Plugin {
 			document.body.appendChild(wrapper);
 			const markdown = (this.app.workspace.activeLeaf.view as any).data;
 			await MarkdownRenderer.renderMarkdown(markdown, wrapper, this.fileBaseName(this.getCurrentFile()), {} as Component);
-			this.postProcessRenderedMarkdown(wrapper);
+			await this.postProcessRenderedMarkdown(wrapper);
 			const renderedMarkdown = wrapper.innerHTML;
 			document.body.removeChild(wrapper);
 
@@ -144,7 +144,7 @@ export default class PandocPlugin extends Plugin {
 
 			// Wrap up
 			fs.stat(outputFile, (err: NodeJS.ErrnoException | null, stats: fs.Stats) => {
-				if (stats.isFile()) new Notice('Successfully exported via Pandoc to ' + outputFile);
+				if (stats && stats.isFile()) new Notice('Successfully exported via Pandoc to ' + outputFile);
 				else {
 					new Notice('Pandoc export silently failed');
 					console.error('Pandoc silently failed');
@@ -204,14 +204,11 @@ export default class PandocPlugin extends Plugin {
 			   `</html>`;
 	}
 
-	postProcessRenderedMarkdown(wrapper: HTMLElement) {
+	async postProcessRenderedMarkdown(wrapper: HTMLElement) {
 		// Fix <span src="image.png">
-		for (let span of Array.from(wrapper.querySelectorAll('span'))) {
-			let src = span.getAttribute('src');
-			if (src && (src.endsWith('.png') || src.endsWith('.jpg') || src.endsWith('.gif') || src.endsWith('.jpeg'))) {
-				span.innerHTML = '';
-				span.outerHTML = span.outerHTML.replace(/span/g, 'img');
-			}
+		for (let span of Array.from(wrapper.querySelectorAll('span[src$=".png"], span[src$=".jpg"], span[src$=".gif"], span[src$=".jpeg"]'))) {
+			span.innerHTML = '';
+			span.outerHTML = span.outerHTML.replace(/span/g, 'img');
 		}
 		// Fix <a href="app://obsidian.md/markdown_file_without_extension">
 		const prefix = 'app://obsidian.md/';
@@ -235,6 +232,20 @@ export default class PandocPlugin extends Plugin {
 		// Fix <img src="app://obsidian.md/image.png">
 		for (let img of Array.from(wrapper.querySelectorAll('img'))) {
 			img.src = img.src.startsWith(prefix) ? path.join(path.dirname(this.getCurrentFile()), img.src.substring(prefix.length)) : img.src;
+		}
+		// Fix <span class='internal-embed' src='another_note_without_extension'>
+		for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
+			let src = span.getAttribute('src');
+			if (src) {
+				const file = path.join(this.vaultBasePath(), src + '.md');
+				try {
+					const result = (await fs.promises.readFile(file)).toString();
+					span.outerHTML = ''; // TODO: process result to postprocessed HTML WITHOUT triggering an infinite loop if you have recursively embedded notes
+				} catch (e) {
+					// Continue if it can't be loaded
+					console.error("Pandoc plugin encountered an error trying to load an embedded note: " + e.toString());
+				}
+			}
 		}
 	}
 
