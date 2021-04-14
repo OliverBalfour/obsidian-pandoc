@@ -31,7 +31,6 @@ type URLString = string;
 export type InputFormat = 'markdown' | 'commonmark' | 'docx' | 'csv' | 'html'
   | 'json' | 'latex' | 'odt';
 
-// TODO: is Pandoc markdown the ideal default markdown type?
 export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 
 // Subset of output formats, will add more later

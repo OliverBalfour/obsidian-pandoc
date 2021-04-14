@@ -69,9 +69,6 @@ export default class PandocPlugin extends Plugin {
     }
 
     currentFileCanBeExported(): boolean {
-        // Note: this is super inefficient
-        // This can probably also be cached each time the file changes instead
-        //  of being called once per format per open of the command palette
         const file = this.getCurrentFile();
         if (!file) return false;
         for (const ext of inputExtensions) {
@@ -81,8 +78,6 @@ export default class PandocPlugin extends Plugin {
     }
 
     async createBinaryMap() {
-        // Note: lookpath scans the entire PATH once, this is not efficient
-        // We're also not coalescing promises via Promise.all
         for (const binary of this.programs) {
             this.features[binary] = await lookpath(binary);
         }
