@@ -14,6 +14,8 @@ export interface PandocPluginSettings {
 	injectPluginCSS: boolean,
 	// Use a custom local .css file?
 	customCSSFile: string | null,
+    // Do we want to display the YAML frontmatter in the output?
+    displayYAMLFrontmatter: boolean,
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
 	injectAppCSS: true,
 	injectPluginCSS: true,
 	customCSSFile: null,
+    displayYAMLFrontmatter: false,
 }
 
 export function replaceFileExtension(file: string, ext: string): string {

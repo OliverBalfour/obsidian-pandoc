@@ -58,7 +58,16 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.showCLICommands = value;
 					await this.plugin.saveSettings();
-				}));
+                }));
+
+        new Setting(containerEl)
+            .setName("Show YAML frontmatter in exported files")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.displayYAMLFrontmatter)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.displayYAMLFrontmatter = value;
+                    await this.plugin.saveSettings();
+                }));
 
 		new Setting(containerEl)
 			.setName("Inject MathJax CSS into HTML output")

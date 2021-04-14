@@ -173,4 +173,9 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
             }
         }
     }
+    // Remove YAML frontmatter from the output if desired
+    if (!settings.displayYAMLFrontmatter) {
+        Array.from(wrapper.querySelectorAll('.frontmatter, .frontmatter-container'))
+            .forEach(el => wrapper.removeChild(el));
+    }
 }
