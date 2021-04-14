@@ -196,8 +196,12 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     // Fix <img src="app://obsidian.md/image.png">
     // Note: this will throw errors when Obsidian tries to load images with a (now invalid) src
     // These errors can be safely ignored
-    for (let img of Array.from(wrapper.querySelectorAll('img'))) {
-        img.src = img.src.startsWith(prefix) ? path.join(dirname, img.src.substring(prefix.length)) : img.src;
+    // Note: we leave HTML links intact (so they're relative image paths) and don't touch the src
+    //  if we're processing an embedded note to avoid double-handling (and thus mangling) the src
+    if (outputFormat !== 'html' && parentFiles.length === 0) {
+        for (let img of Array.from(wrapper.querySelectorAll('img'))) {
+            img.src = img.src.startsWith(prefix) ? path.join(dirname, img.src.substring(prefix.length)) : img.src;
+        }
     }
     // Remove YAML frontmatter from the output if desired
     if (!settings.displayYAMLFrontmatter) {
