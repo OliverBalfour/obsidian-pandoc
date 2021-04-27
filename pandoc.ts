@@ -136,9 +136,13 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         pandoc = spawn('pandoc', args);
 
         if (stdin) {
+            const contents = input.contents;
+            /*
+            // TODO: we need to strip characters like the footnote sign but not other language characters
             const contents = needsUnicodeStripped(output)
                 ? input.contents.replace(/[^\x00-\x7F]/g, "")
                 : input.contents;
+            */
             pandoc.stdin.write(contents);
             pandoc.stdin.end();
         }
