@@ -6,23 +6,23 @@ It adds command palette options to export your notes to a variety of formats inc
 
 This lets you **write presentations**, **draft books**, **make webpages**, and **write assignments** all in Markdown, and export to whichever format you fancy, all without leaving Obsidian.
 
-**Note:** This plugin is still in beta. It **does** support Obsidian's markdown extensions. However, features like the settings interface and good error handling aren't finished yet. There are guaranteed to be bugs (see Known Issues below).
+**Note:** This plugin is still in beta. It **does** support Obsidian's markdown extensions. However, there are still some bizarre formatting bugs and missing features (like citations), so make sure to proof read the output!
 
 ![screenshot of command palette](./command-palette.png)
 
 How to install:
-1. [Install Pandoc](https://pandoc.org/installing.html) if you have not already
+1. [Install Pandoc](https://pandoc.org/installing.html) if you have not already (without Pandoc only the HTML export works)
 2. Download this repository as a zip file, and unzip it into your `vault/.obsidian/plugins` folder
 3. Enable it in the community plugins settings menu
 
 Once the plugin is in better shape, I will make it installable by browsing the community plugins list. For now it's a little tedious.
 
 How it works:
-* Press Ctrl+P to show the command palette. (You'll need the core command palette plugin enabled, and you'll need to have a markdown document open.)
+* Press Ctrl+P/Cmd+P to show the command palette
 * Search "Pandoc"
 * Choose your export format
 * If all goes well, it will say it was successful
-* If you exported a file called `Pandoc.md` as a Word Document, in your file explorer there should now be a `Pandoc.docx` file next to `Pandoc.md`. (I'll add a save file dialog to choose the name/folder soon)
+* If you exported a file called `Pandoc.md` as a Word Document, in your file explorer there will be a `Pandoc.docx` file in the same folder
 
 ## Tips & tricks
 
@@ -35,12 +35,12 @@ How it works:
 
 * Help! It's saying Pandoc can't be found!
   
-  This happens when you have PATH variable issues. If you don't know what that means, there's a setting called `Pandoc path` at the bottom of the settings panel. If you run `which pandoc` in a terminal on Mac/Linux and `Get-Command pandoc` in powershell on Windows, just paste the path to the file in that field (should look like `/usr/bin/pandoc` or `C:\example\pandoc.exe`). If this doesn't work just let me know.
+  This happens when you have PATH variable issues. If you don't know what that means, there's a setting called `Pandoc path` at the bottom of the settings panel. If you run `which pandoc` in a terminal on Mac/Linux and `Get-Command pandoc` in powershell on Windows, just paste the path to the file in that field (should look like `/usr/bin/pandoc` or `C:\example\pandoc.exe`).
   
-  If you're curious about the PATH thing, see [here](https://github.com/OliverBalfour/obsidian-pandoc/issues/15#issuecomment-823650889) for more info (everything after "When you installed Pandoc...")
+  (If you're curious about the PATH thing, see [here](https://github.com/OliverBalfour/obsidian-pandoc/issues/15#issuecomment-823650889) for more info.)
 * Weird looking output?
   
-  Sometimes Pandoc is a little fiddly, but if you can't figure out the case feel free to report an issue
+  Sometimes Pandoc is a little fiddly, but if you can't figure it out feel free to report an issue
 
 ## Known Issues
 
