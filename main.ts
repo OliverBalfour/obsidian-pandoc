@@ -45,7 +45,7 @@ export default class PandocPlugin extends Plugin {
                 checkCallback: (checking: boolean) => {
                     let leaf = this.app.workspace.activeLeaf;
                     if (!leaf) return false;
-                    if (!this.features.pandoc && pandocFormat !== 'html') return false;
+                    if (!this.features.pandoc && pandocFormat !== 'html' && !this.settings.pandoc) return false;
                     if (!this.currentFileCanBeExported()) return false;
                     if (!checking) {
                         this.startPandocExport(this.getCurrentFile(), pandocFormat as OutputFormat, extension, shortName);
@@ -102,7 +102,11 @@ export default class PandocPlugin extends Plugin {
                 new Notice('Successfully exported via Pandoc to ' + outputFile);
             } else {
                 // Spawn Pandoc
-                const { error, command } = await pandoc({ file: 'STDIN', contents: html, format: 'html', title }, { file: outputFile, format });
+                const { error, command } = await pandoc(
+                    { file: 'STDIN', contents: html, format: 'html', title,
+                        pandoc: this.settings.pandoc },
+                    { file: outputFile, format }
+                );
                 // Never give warnings for plain-text exports
                 if (error.length && format !== 'plain') {
                     new Notice('Exported via Pandoc to ' + outputFile + ' with warnings');

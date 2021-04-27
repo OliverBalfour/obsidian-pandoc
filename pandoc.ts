@@ -59,6 +59,7 @@ export interface PandocInput {
     format?: InputFormat,  // -f/--from format, if left blank it's inferred by Pandoc
     contents?: string,
     title?: string,  // used as metadata for HTML <title>, etc. defaults to the file base name
+    pandoc?: string, // optional path to Pandoc if it's not in the current PATH variable
 }
 
 export interface PandocOutput {
@@ -133,7 +134,7 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         // Spawn a Pandoc child process
         // Assumes Pandoc is installed and that the arguments are valid
         // The arguments aren't sanitised, so be careful!
-        pandoc = spawn('pandoc', args);
+        pandoc = spawn(input.pandoc || 'pandoc', args);
 
         if (stdin) {
             const contents = input.contents;

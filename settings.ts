@@ -33,7 +33,7 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
         
         for (const binary of this.plugin.programs) {
             const path = this.plugin.features[binary];
-            if (path === undefined) {
+            if (path === undefined && (binary !== 'pandoc' || !this.plugin.settings.pandoc)) {
                 createError(this.errorMessages[binary]);
             }
         }
@@ -132,6 +132,17 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.addExtensionsToInternalLinks)
                 .onChange(async (value: string) => {
                     this.plugin.settings.addExtensionsToInternalLinks = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("Pandoc path")
+            .setDesc("Optional override for Pandoc's path if you have command not found issues. On Mac/Linux use the output of 'which pandoc' in a terminal; on Windows use the output of 'Get-Command pandoc' in powershell.")
+            .addText(text => text
+                .setPlaceholder('pandoc')
+                .setValue(this.plugin.settings.pandoc)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.pandoc = value;
                     await this.plugin.saveSettings();
                 }));
     }
