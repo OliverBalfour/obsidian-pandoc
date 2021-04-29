@@ -62,8 +62,7 @@ export default class PandocPlugin extends Plugin {
     getCurrentFile(): string | null {
         const fileData = this.app.workspace.getActiveFile();
         if (!fileData) return null;
-        const { basename, extension } = fileData;
-        const filename = `${basename}.${extension}`;
+        const filename = fileData.path;
         return path.join(this.vaultBasePath(), filename);
     }
 
