@@ -23,6 +23,9 @@ export interface PandocPluginSettings {
     // Custom Pandoc & LaTeX binary paths (useful for PATH variable issues)
     pandoc: string | null,
     pdflatex: string | null,
+    // Output folder - if unspecified exports are saved next to where they were exported from
+    // The path is absolute
+    outputFolder: string | null,
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -36,6 +39,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     highDPIDiagrams: true,
     pandoc: null,
     pdflatex: null,
+    outputFolder: null,
 }
 
 export function replaceFileExtension(file: string, ext: string): string {

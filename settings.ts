@@ -92,6 +92,17 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName("Export folder")
+            .setDesc("Absolute path to an export folder, like 'C:\Users\Example\Documents' or '/home/user/zettelkasten'. If left blank, files are saved next to where they were exported from.")
+            .addText(text => text
+                .setPlaceholder('same as target')
+                .setValue(this.plugin.settings.outputFolder)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.outputFolder = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName("Show Pandoc command line interface commands")
             .setDesc("Doesn't apply to HTML exports. Using the CLI will have slightly different results due to how this plugin works.")
             .addToggle(toggle => toggle

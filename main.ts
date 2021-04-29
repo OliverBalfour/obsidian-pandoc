@@ -91,7 +91,10 @@ export default class PandocPlugin extends Plugin {
             const markdown = (this.app.workspace.activeLeaf.view as any).data;
             const { html, title } = await render(this.settings, markdown, inputFile, this.vaultBasePath(), format);
 
-            const outputFile = replaceFileExtension(inputFile, extension);
+            let outputFile: string = replaceFileExtension(inputFile, extension);
+            if (this.settings.outputFolder) {
+                outputFile = path.join(this.settings.outputFolder, path.basename(outputFile));
+            }
 
             if (format === 'html') {
                 // Write to HTML file
