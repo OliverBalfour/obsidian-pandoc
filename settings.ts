@@ -51,18 +51,26 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName("Inject app/plugin CSS (HTML output only)")
-            .setDesc("This applies app and plugin CSS to HTML exports, but the files become bigger.")
+            .setName("Inject app & plugin CSS (HTML output only)")
+            .setDesc("This applies app CSS to HTML exports, but the files become a little bigger.")
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.injectPluginCSS)
+                .setValue(this.plugin.settings.injectAppCSS)
                 .onChange(async (value: boolean) => {
-                    this.plugin.settings.injectPluginCSS
-                        = this.plugin.settings.injectAppCSS
+                    this.plugin.settings.injectAppCSS
                         = this.plugin.settings.injectMathJaxCSS
                         = value;
                     await this.plugin.saveSettings();
                 }));
 
+        new Setting(containerEl)
+            .setName("Inject theme CSS (HTML output only)")
+            .setDesc("The output might look better, but the files can become *much* bigger.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.injectPluginCSS)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.injectPluginCSS = value;
+                    await this.plugin.saveSettings();
+                }));
 
         new Setting(containerEl)
             .setName("Internal link processing")

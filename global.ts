@@ -12,7 +12,7 @@ export interface PandocPluginSettings {
     injectMathJaxCSS: boolean,
     // Do we inject the default Obsidian light theme styling? This may cause licensing issues
     injectAppCSS: boolean,
-    // Do we inject 3rd party plugin CSS?
+    // Do we inject theme CSS?
     injectPluginCSS: boolean,
     // Use a custom local .css file?
     customCSSFile: string | null,
@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     addExtensionsToInternalLinks: 'html',
     injectMathJaxCSS: true,
     injectAppCSS: true,
-    injectPluginCSS: true,
+    injectPluginCSS: false,
     customCSSFile: null,
     displayYAMLFrontmatter: false,
     linkStrippingBehaviour: 'text',

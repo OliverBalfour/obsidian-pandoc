@@ -19,7 +19,9 @@ import { outputFormats } from 'pandoc';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
-export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string, outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, title: string }> {
+export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string,
+    outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, title: string }>
+{
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const wrapper = document.createElement('div');
     wrapper.style.display = 'hidden';
@@ -27,7 +29,8 @@ export default async function render (settings: PandocPluginSettings, markdown: 
     await MarkdownRenderer.renderMarkdown(markdown, wrapper, path.dirname(inputFile), {} as Component);
 
     // Post-process the HTML in-place
-    await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat, parentFiles);
+    await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat,
+        parentFiles, appCSSVariables(await appIsLightTheme(vaultBasePath)));
     const renderedMarkdown = wrapper.innerHTML;
     document.body.removeChild(wrapper);
 
@@ -100,14 +103,41 @@ async function getCustomCSS(settings: PandocPluginSettings, vaultBasePath: strin
     }
 }
 
+async function getAppConfig(vaultBasePath: string): Promise<any> {
+    return JSON.parse((await fs.promises.readFile(path.join(vaultBasePath, '.obsidian', 'config'))).toString());
+}
+
+async function appIsLightTheme(vaultBasePath: string): Promise<boolean> {
+    try {
+        return (await getAppConfig(vaultBasePath)).theme !== 'obsidian';
+    } catch (e) {
+        console.log(e);
+        return true;
+    }
+}
+
+async function getThemeCSS(vaultBasePath: string, includeThemeCSS: boolean): Promise<string> {
+    try {
+        const config = await getAppConfig(vaultBasePath);
+        const isDark = config.theme === 'obsidian';
+        const css = includeThemeCSS
+          ? await fs.promises.readFile(path.join(vaultBasePath, '.obsidian', 'themes', config.cssTheme + '.css'))
+          : '';
+        return appCSS(!isDark) + css.toString();
+    } catch (e) {
+        console.error("Pandoc plugin couldn't load theme CSS. Error: " + e.toString());
+        return '';
+    }
+}
+
 async function getDesiredCSS(settings: PandocPluginSettings, html: string, vaultBasePath: string): Promise<string> {
     let css = '';
-    // Inject light theme app CSS if the user wants it
-    if (settings.injectAppCSS) css = appCSS;
-    // Inject plugin CSS if the user wants it
-    if (settings.injectPluginCSS)
+    // Inject app CSS if the user wants it
+    if (settings.injectAppCSS) {
+        css = await getThemeCSS(vaultBasePath, settings.injectPluginCSS);
         css += ' ' + Array.from(document.querySelectorAll('style'))
             .map(s => s.innerHTML).join(' ');
+    }
     // Inject MathJax font CSS if needed (at this stage embedded notes are
     //  already embedded so this covers all cases)
     if (settings.injectMathJaxCSS && html.indexOf('jax="CHTML"') !== -1)
@@ -135,7 +165,7 @@ async function standaloneHTML(settings: PandocPluginSettings, html: string, titl
         `</html>`;
 }
 
-async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement, vaultBasePath: string, outputFormat: string, parentFiles: string[] = []) {
+async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement, vaultBasePath: string, outputFormat: string, parentFiles: string[] = [], css: string = '') {
     const dirname = path.dirname(inputFile);
     // Fix <span src="image.png">
     for (let span of Array.from(wrapper.querySelectorAll('span[src$=".png"], span[src$=".jpg"], span[src$=".gif"], span[src$=".jpeg"]'))) {
@@ -213,7 +243,7 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
         // Insert the CSS variables as a CSS string (even if the user doesn't want CSS injected; Mermaid diagrams look terrible otherwise)
         // TODO: it injects light theme CSS, do we want this?
         let style: HTMLStyleElement = svg.querySelector('style') || svg.appendChild(document.createElement('style'));
-        style.innerHTML += appCSSVariables;
+        style.innerHTML += css;
         // Inject a marker (arrowhead) for Mermaid.js diagrams and use it at the end of paths
         svg.innerHTML += `"<marker id="mermaid_arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="strokeWidth" markerWidth="8" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowheadPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker>"`;
         svg.innerHTML = svg.innerHTML.replace(/app:\/\/obsidian\.md\/index\.html#arrowhead\d*/g, "#mermaid_arrowhead");

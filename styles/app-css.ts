@@ -1,11 +1,12 @@
 
-// This CSS is composed of Prism.css and a small amount of light theme Obsidian CSS,
+// This CSS is composed of Prism.css and a small amount of Obsidian CSS,
 // which is copyrighted by the Obsidian developers.
 // I've received permission from @Licat on Discord to include this snippet in the plugin
 // and HTML exports from it.
 // See https://discord.com/channels/686053708261228577/707816848615407697/830630553883377690
 
-export const variables = `
+export function variables (light: boolean = true) {
+  if (light) return `
 :root {
   --default-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Microsoft YaHei Light", sans-serif;
   --font-monospace: 'Source Code Pro', monospace;
@@ -18,20 +19,26 @@ export const variables = `
   --background-secondary-alt: #e3e5e8;
   --text-muted: #888888;
 }`;
-
-export default `
+  else return `
 :root {
-  --default-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Microsoft YaHei Light", sans-serif;
-  --font-monospace: 'Source Code Pro', monospace;
-  --background-primary: #ffffff;
-  --background-modifier-border: #ddd;
-  --text-accent: #705dcf;
-  --text-accent-hover: #7a6ae6;
-  --text-normal: #2e3338;
-  --background-secondary: #f2f3f5;
-  --background-secondary-alt: #e3e5e8;
-  --text-muted: #888888;
+  --background-primary: #202020;
+  --background-modifier-border: #333;
+  --text-accent: #7f6df2;
+  --text-accent-hover: #8875ff;
+  --text-normal: #dcddde;
+  --background-secondary: #161616;
+  --background-secondary-alt: #000000;
+  --text-muted: #999;
 }
+`;
+}
+
+export default function (light: boolean = true) {
+  return variables(light) + body();
+}
+
+function body () {
+  return `
 pre, code {
   font-family: var(--font-monospace);
 }
@@ -197,3 +204,4 @@ pre[class*="language-"] {
 }
 
 `;
+}
