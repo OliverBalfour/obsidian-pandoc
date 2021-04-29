@@ -8,12 +8,10 @@ export interface PandocPluginSettings {
     // When rendering internal [[wikilinks]], should we add a file extension?
     // eg turns <a href="file"> to <a href="file.extension">
     addExtensionsToInternalLinks: string,
-    // Do we inject CSS to add proper MathJax fonts, if there are math equations?
-    injectMathJaxCSS: boolean,
-    // Do we inject the default Obsidian light theme styling? This may cause licensing issues
-    injectAppCSS: boolean,
-    // Do we inject theme CSS?
-    injectPluginCSS: boolean,
+    // Which default theme's CSS do we inject? (we only use a tiny subset - variables, basic styling)
+    injectAppCSS: 'current' | 'none' | 'light' | 'dark',
+    // Do we inject 3rd party theme CSS as well as the app's default CSS?
+    injectThemeCSS: boolean,
     // Use a custom local .css file?
     customCSSFile: string | null,
     // Do we want to display the YAML frontmatter in the output?
@@ -30,9 +28,8 @@ export interface PandocPluginSettings {
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
     showCLICommands: false,
     addExtensionsToInternalLinks: 'html',
-    injectMathJaxCSS: true,
-    injectAppCSS: true,
-    injectPluginCSS: false,
+    injectAppCSS: 'light',
+    injectThemeCSS: false,
     customCSSFile: null,
     displayYAMLFrontmatter: false,
     linkStrippingBehaviour: 'text',

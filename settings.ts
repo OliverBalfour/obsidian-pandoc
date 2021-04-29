@@ -51,24 +51,28 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName("Inject app & plugin CSS (HTML output only)")
-            .setDesc("This applies app CSS to HTML exports, but the files become a little bigger.")
-            .addToggle(toggle => toggle
+            .setName("Inject app CSS (HTML output only)")
+            .setDesc("This applies app & plugin CSS to HTML exports, but the files become a little bigger.")
+            .addDropdown(dropdown => dropdown
+                .addOptions({
+                    "current": "Current theme",
+                    "none": "Neither theme",
+                    "light": "Light theme",
+                    "dark": "Dark theme",
+                })
                 .setValue(this.plugin.settings.injectAppCSS)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.injectAppCSS
-                        = this.plugin.settings.injectMathJaxCSS
-                        = value;
+                .onChange(async (value: string) => {
+                    this.plugin.settings.injectAppCSS = value as 'current' | 'none' | 'light' | 'dark';
                     await this.plugin.saveSettings();
                 }));
 
-        new Setting(containerEl)
-            .setName("Inject theme CSS (HTML output only)")
-            .setDesc("The output might look better, but the files can become *much* bigger.")
+                new Setting(containerEl)
+            .setName("Inject entire 3rd party theme CSS file (HTML output only)")
+            .setDesc("The output might look better, but the files can become *much* bigger. Don't enable unless you need to.")
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.injectPluginCSS)
+                .setValue(this.plugin.settings.injectThemeCSS)
                 .onChange(async (value: boolean) => {
-                    this.plugin.settings.injectPluginCSS = value;
+                    this.plugin.settings.injectThemeCSS = value;
                     await this.plugin.saveSettings();
                 }));
 
