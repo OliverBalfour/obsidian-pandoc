@@ -19,7 +19,6 @@ import PandocPluginSettingTab from './settings';
 import { PandocPluginSettings, DEFAULT_SETTINGS, replaceFileExtension, fileExists } from './global';
 export default class PandocPlugin extends Plugin {
     settings: PandocPluginSettings;
-    programs = ['pandoc', 'latex'];
     features: { [key: string]: string | undefined } = {};
 
     async onload() {
@@ -38,14 +37,14 @@ export default class PandocPlugin extends Plugin {
     registerCommands() {
         for (let [prettyName, pandocFormat, extension, shortName] of outputFormats) {
             if (needsLaTeX(pandocFormat as OutputFormat)
-                && !this.features['latex']) continue;
+                && !this.features['pdflatex']) continue;
             const name = 'Export as ' + prettyName;
             this.addCommand({
                 id: 'pandoc-export-' + pandocFormat, name,
                 checkCallback: (checking: boolean) => {
                     let leaf = this.app.workspace.activeLeaf;
                     if (!leaf) return false;
-                    if (!this.features.pandoc && pandocFormat !== 'html' && !this.settings.pandoc) return false;
+                    if (!this.features.pandoc && pandocFormat !== 'html') return false;
                     if (!this.currentFileCanBeExported()) return false;
                     if (!checking) {
                         this.startPandocExport(this.getCurrentFile(), pandocFormat as OutputFormat, extension, shortName);
@@ -78,9 +77,8 @@ export default class PandocPlugin extends Plugin {
     }
 
     async createBinaryMap() {
-        for (const binary of this.programs) {
-            this.features[binary] = await lookpath(binary);
-        }
+        this.features['pandoc'] = this.settings.pandoc || await lookpath('pandoc');
+        this.features['pdflatex'] = this.settings.pdflatex || await lookpath('pdflatex');
     }
 
     async startPandocExport(inputFile: string, format: OutputFormat, extension: string, shortName: string) {
@@ -104,7 +102,7 @@ export default class PandocPlugin extends Plugin {
                 // Spawn Pandoc
                 const { error, command } = await pandoc(
                     { file: 'STDIN', contents: html, format: 'html', title,
-                        pandoc: this.settings.pandoc },
+                        pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex },
                     { file: outputFile, format }
                 );
                 // Never give warnings for plain-text exports

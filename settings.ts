@@ -31,9 +31,9 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
         const createError = (text: string) =>
             containerEl.createEl('p', { cls: 'pandoc-plugin-error', text });
         
-        for (const binary of this.plugin.programs) {
+        for (const binary in this.plugin.features) {
             const path = this.plugin.features[binary];
-            if (path === undefined && (binary !== 'pandoc' || !this.plugin.settings.pandoc)) {
+            if (path === undefined) {
                 createError(this.errorMessages[binary]);
             }
         }
@@ -97,6 +97,17 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.pandoc)
                 .onChange(async (value: string) => {
                     this.plugin.settings.pandoc = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("PDFLaTeX path")
+            .setDesc("Optional override for pdflatex's path. Same as above but with 'which pdflatex'")
+            .addText(text => text
+                .setPlaceholder('pdflatex')
+                .setValue(this.plugin.settings.pdflatex)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.pdflatex = value;
                     await this.plugin.saveSettings();
                 }));
     }

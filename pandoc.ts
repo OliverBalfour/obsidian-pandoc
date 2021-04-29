@@ -60,6 +60,7 @@ export interface PandocInput {
     contents?: string,
     title?: string,  // used as metadata for HTML <title>, etc. defaults to the file base name
     pandoc?: string, // optional path to Pandoc if it's not in the current PATH variable
+    pdflatex?: string, // ditto for pdflatex
 }
 
 export interface PandocOutput {
@@ -134,7 +135,19 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         // Spawn a Pandoc child process
         // Assumes Pandoc is installed and that the arguments are valid
         // The arguments aren't sanitised, so be careful!
-        pandoc = spawn(input.pandoc || 'pandoc', args);
+        const env = Object.assign(process.env);
+
+        if (input.pdflatex) {
+            // Workaround for Windows having different PATH delimiters
+            // to *every other operating system in existence*
+            // *sigh*
+            if (process.platform === 'win32')
+                env.PATH += ";"
+            else
+                env.PATH += ":";
+            env.PATH += path.dirname(input.pdflatex);
+        }
+        pandoc = spawn(input.pandoc || 'pandoc', args, { env: process.env });
 
         if (stdin) {
             const contents = input.contents;

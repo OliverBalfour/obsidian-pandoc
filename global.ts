@@ -22,8 +22,9 @@ export interface PandocPluginSettings {
     linkStrippingBehaviour: 'strip' | 'text' | 'link',
     // Do we render SVGs at 2x the size?
     highDPIDiagrams: boolean,
-    // Custom Pandoc binary path (useful for PATH variable issues)
+    // Custom Pandoc & LaTeX binary paths (useful for PATH variable issues)
     pandoc: string | null,
+    pdflatex: string | null,
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -37,6 +38,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     linkStrippingBehaviour: 'text',
     highDPIDiagrams: true,
     pandoc: null,
+    pdflatex: null,
 }
 
 export function replaceFileExtension(file: string, ext: string): string {
