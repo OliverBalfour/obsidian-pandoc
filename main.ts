@@ -12,7 +12,7 @@ import * as path from 'path';
 
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter, MarkdownRenderer, Component } from 'obsidian';
 import { lookpath } from 'lookpath';
-import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX } from './pandoc';
+import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX, needsPandoc } from './pandoc';
 
 import render from './renderer';
 import PandocPluginSettingTab from './settings';
@@ -36,16 +36,13 @@ export default class PandocPlugin extends Plugin {
 
     registerCommands() {
         for (let [prettyName, pandocFormat, extension, shortName] of outputFormats) {
-            if (needsLaTeX(pandocFormat as OutputFormat)
-                && !this.features['pdflatex']) continue;
+
             const name = 'Export as ' + prettyName;
             this.addCommand({
                 id: 'pandoc-export-' + pandocFormat, name,
                 checkCallback: (checking: boolean) => {
-                    let leaf = this.app.workspace.activeLeaf;
-                    if (!leaf) return false;
-                    if (!this.features.pandoc && pandocFormat !== 'html') return false;
-                    if (!this.currentFileCanBeExported()) return false;
+                    if (!this.app.workspace.activeLeaf) return false;
+                    if (!this.currentFileCanBeExported(pandocFormat as OutputFormat)) return false;
                     if (!checking) {
                         this.startPandocExport(this.getCurrentFile(), pandocFormat as OutputFormat, extension, shortName);
                     }
@@ -66,7 +63,11 @@ export default class PandocPlugin extends Plugin {
         return path.join(this.vaultBasePath(), filename);
     }
 
-    currentFileCanBeExported(): boolean {
+    currentFileCanBeExported(format: OutputFormat): boolean {
+        // Is it an available output type?
+        if (needsPandoc(format) && !this.features['pandoc']) return false;
+        if (needsLaTeX(format) && !this.features['pdflatex']) return false;
+        // Is it a supported input type?
         const file = this.getCurrentFile();
         if (!file) return false;
         for (const ext of inputExtensions) {

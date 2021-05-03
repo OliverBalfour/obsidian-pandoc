@@ -72,7 +72,11 @@ export interface PandocOutput {
 }
 
 export function needsLaTeX(format: OutputFormat): boolean {
-    return format !== 'latex' && format !== 'pdf';
+    return format === 'pdf';
+}
+
+export function needsPandoc(format: OutputFormat): boolean {
+    return format !== 'html';
 }
 
 export function needsStandaloneFlag(output: PandocOutput): boolean {
