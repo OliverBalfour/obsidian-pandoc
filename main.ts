@@ -10,13 +10,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter, MarkdownRenderer, Component } from 'obsidian';
+import { Notice, Plugin, FileSystemAdapter, MarkdownView } from 'obsidian';
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX, needsPandoc } from './pandoc';
 
 import render from './renderer';
 import PandocPluginSettingTab from './settings';
-import { PandocPluginSettings, DEFAULT_SETTINGS, replaceFileExtension, fileExists } from './global';
+import { PandocPluginSettings, DEFAULT_SETTINGS, replaceFileExtension } from './global';
 export default class PandocPlugin extends Plugin {
     settings: PandocPluginSettings;
     features: { [key: string]: string | undefined } = {};
@@ -89,8 +89,8 @@ export default class PandocPlugin extends Plugin {
         // This allows us to more easily deal with Obsidian specific Markdown syntax.
 
         try {
-            const markdown = (this.app.workspace.activeLeaf.view as any).data;
-            const { html, title } = await render(this.settings, markdown, inputFile, this.vaultBasePath(), format);
+            const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+            const { html, title } = await render(this.settings, view, inputFile, this.vaultBasePath(), format);
 
             let outputFile: string = replaceFileExtension(inputFile, extension);
             if (this.settings.outputFolder) {

@@ -10,7 +10,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { MarkdownRenderer, Component, Notice } from 'obsidian';
+import { MarkdownRenderer, MarkdownView, Notice } from 'obsidian';
 
 import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
@@ -19,14 +19,15 @@ import { outputFormats } from 'pandoc';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
-export default async function render (settings: PandocPluginSettings, markdown: string, inputFile: string, vaultBasePath: string,
+export default async function render (settings: PandocPluginSettings, view: MarkdownView, inputFile: string, vaultBasePath: string,
     outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, title: string }>
 {
     // Use Obsidian's markdown renderer to render to a hidden <div>
+    const markdown = view.data;
     const wrapper = document.createElement('div');
     wrapper.style.display = 'hidden';
     document.body.appendChild(wrapper);
-    await MarkdownRenderer.renderMarkdown(markdown, wrapper, path.dirname(inputFile), {} as Component);
+    await MarkdownRenderer.renderMarkdown(markdown, wrapper, path.dirname(inputFile), view);
 
     // Post-process the HTML in-place
     await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat,
@@ -207,7 +208,12 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
                     const markdown = (await fs.promises.readFile(file)).toString();
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
-                    const html = await render(settings, markdown, file, vaultBasePath, outputFormat, newParentFiles);
+                    
+                    
+                    // TODO: fix this horrendous cast
+
+
+                    const html = await render(settings, { data: markdown } as MarkdownView, file, vaultBasePath, outputFormat, newParentFiles);
                     span.outerHTML = html.html;
                 }
             } catch (e) {
