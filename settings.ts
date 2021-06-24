@@ -82,6 +82,20 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName("Export files from HTML or markdown?")
+            .setDesc("Export from markdown, or from the HTML visible in Obsidian? HTML supports fancy plugin features, markdown supports Pandoc features like citations.")
+            .addDropdown(dropdown => dropdown
+                .addOptions({
+                    "html": "HTML",
+                    "md": "Markdown",
+                })
+                .setValue(this.plugin.settings.exportFrom)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.exportFrom = value as 'html' | 'md';
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName("Export folder")
             .setDesc("Absolute path to an export folder, like 'C:\Users\Example\Documents' or '/home/user/zettelkasten'. If left blank, files are saved next to where they were exported from.")
             .addText(text => text

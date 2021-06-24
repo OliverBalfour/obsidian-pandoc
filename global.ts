@@ -28,6 +28,8 @@ export interface PandocPluginSettings {
     outputFolder: string | null,
     // Extra CLI arguments for Pandoc to support features we don't have a UI for yet
     extraArguments: string,
+    // Export from HTML or from markdown?
+    exportFrom: 'html' | 'md',
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     pdflatex: null,
     outputFolder: null,
     extraArguments: '',
+    exportFrom: 'html',
 }
 
 export function replaceFileExtension(file: string, ext: string): string {
