@@ -188,11 +188,7 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
                     const markdown = (await fs.promises.readFile(file)).toString();
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
-                    
-                    
-                    // TODO: fix this horrendous cast
-
-
+                    // TODO: because of this cast, embedded notes won't be able to handle complex plugins (eg DataView)
                     const html = await render(settings, { data: markdown } as MarkdownView, file, vaultBasePath, outputFormat, newParentFiles);
                     span.outerHTML = html.html;
                 }

@@ -28,7 +28,7 @@ export default class PandocPlugin extends Plugin {
         await this.loadSettings();
 
         // Check if Pandoc, LaTeX, etc. are installed and in the PATH
-        await this.createBinaryMap();
+        this.createBinaryMap();
 
         // Register all of the command palette entries
         this.registerCommands();
@@ -61,8 +61,10 @@ export default class PandocPlugin extends Plugin {
     getCurrentFile(): string | null {
         const fileData = this.app.workspace.getActiveFile();
         if (!fileData) return null;
-        const filename = fileData.path;
-        return path.join(this.vaultBasePath(), filename);
+        const adapter = this.app.vault.adapter;
+        if (adapter instanceof FileSystemAdapter)
+            return adapter.getFullPath(fileData.path);
+        return null;
     }
 
     currentFileCanBeExported(format: OutputFormat): boolean {
