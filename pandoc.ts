@@ -61,7 +61,7 @@ export interface PandocInput {
     file: AbsoluteFilePath | URLString | 'STDIN',  // if STDIN, the contents parameter must exist
     format?: InputFormat,  // -f/--from format, if left blank it's inferred by Pandoc
     contents?: string,
-    title?: string,  // used as metadata for HTML <title>, etc. defaults to the file base name
+    metadataFile?: string,  // path to YAML file
     pandoc?: string, // optional path to Pandoc if it's not in the current PATH variable
     pdflatex?: string, // ditto for pdflatex
 }
@@ -110,9 +110,6 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
     // Construct the Pandoc arguments list
     let args: string[] = [];
 
-    // The title is needed for ePub and standalone HTML formats
-    const title = input.title || fileBaseName(input.file);
-    args.push('--metadata', `title=${title}`);
     if (input.format) {
         args.push('--from');
         args.push(input.format);
@@ -136,6 +133,10 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
     if (!stdin) {
         args.push(input.file);
     }
+    // The metadata title is needed for ePub and standalone HTML formats
+    // We use a metadata file to avoid being vulnerable to command injection
+    if (input.metadataFile) args.push('--metadata-file', input.metadataFile);
+    // Extra parameters
     if (extraParams) {
         args.push(...extraParams);
     }

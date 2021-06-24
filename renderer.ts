@@ -9,6 +9,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import * as YAML from 'yaml';
 
 import { MarkdownRenderer, MarkdownView, Notice } from 'obsidian';
 
@@ -20,7 +21,7 @@ import { outputFormats } from 'pandoc';
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
 export default async function render (settings: PandocPluginSettings, view: MarkdownView, inputFile: string, vaultBasePath: string,
-    outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, title: string }>
+    outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, metadata: { [index: string]: string } }>
 {
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const markdown = view.data;
@@ -32,20 +33,17 @@ export default async function render (settings: PandocPluginSettings, view: Mark
     // Post-process the HTML in-place
     await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat,
         parentFiles, await mermaidCSS(settings, vaultBasePath));
-    const renderedMarkdown = wrapper.innerHTML;
+    let html = wrapper.innerHTML;
     document.body.removeChild(wrapper);
 
-    // Make the HTML a standalone document - inject CSS, a <title>, etc.
-    let html;
-    const title = getTitle(markdown, inputFile);
+    // If it's a top level note, make the HTML a standalone document - inject CSS, a <title>, etc.
+    const metadata = getYAMLMetadata(markdown);
+    metadata.title ??= fileBaseName(inputFile);
     if (parentFiles.length === 0) {
-        html = await standaloneHTML(settings, renderedMarkdown, title, vaultBasePath);
-    } else {
-        // Embedded notes don't need CSS injected
-        html = renderedMarkdown;
+        html = await standaloneHTML(settings, html, metadata.title, vaultBasePath);
     }
 
-    return { html, title };
+    return { html, metadata };
 }
 
 // Takes any file path like '/home/oliver/zettelkasten/Obsidian.md' and
@@ -54,31 +52,14 @@ function fileBaseName(file: string): string {
     return path.basename(file, path.extname(file));
 }
 
-// Chooses a suitable title for the document
-// Uses the YAML frontmatter title field, falling back on the file base name
-function getTitle(markdown: string, filename: string): string {
-    // Try to extract a YAML frontmatter title using highly inefficient
-    // string matching. Performance isn't too problematic as this is called
-    // rarely, and I think it's still O(n), just with a large constant
-    // TODO: can I use obsidian.parseFrontMatter* instead of doing it manually?
+function getYAMLMetadata(markdown: string) {
     markdown = markdown.trim();
     if (markdown.startsWith('---')) {
         const trailing = markdown.substring(3);
         const frontmatter = trailing.substring(0, trailing.indexOf('---')).trim();
-        const lines = frontmatter.split('\n').map(x => x.trim());
-        for (const line of lines) {
-            if (line.startsWith('title:')) {
-                // Assume the title goes to the end of the line, and that
-                // quotes are not intended to be in the filename
-                // This certainly won't be YAML spec compliant
-                let title = line.substring('title:'.length).trim();
-                title.replace(/"/g, '');
-                return title;
-            }
-        }
+        return YAML.parse(frontmatter);
     }
-    // Fall back on file name
-    return fileBaseName(filename);
+    return {};
 }
 
 async function getCustomCSS(settings: PandocPluginSettings, vaultBasePath: string): Promise<string> {
@@ -141,7 +122,6 @@ async function getThemeCSS(settings: PandocPluginSettings, vaultBasePath: string
             css = settings.injectThemeCSS
               ? await fs.promises.readFile(path.join(vaultBasePath, '.obsidian', 'themes', config.cssTheme + '.css'))
               : '';
-              console.log(css.toString())
         } catch (e) {
             console.error("Pandoc plugin couldn't load theme CSS. Error: " + e.toString());
         }

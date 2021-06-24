@@ -13,6 +13,8 @@ import * as path from 'path';
 import { Notice, Plugin, FileSystemAdapter, MarkdownView } from 'obsidian';
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX, needsPandoc } from './pandoc';
+import * as YAML from 'yaml';
+import * as temp from 'temp';
 
 import render from './renderer';
 import PandocPluginSettingTab from './settings';
@@ -90,7 +92,7 @@ export default class PandocPlugin extends Plugin {
 
         try {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-            const { html, title } = await render(this.settings, view, inputFile, this.vaultBasePath(), format);
+            const { html, metadata } = await render(this.settings, view, inputFile, this.vaultBasePath(), format);
 
             let outputFile: string = replaceFileExtension(inputFile, extension);
             if (this.settings.outputFolder) {
@@ -103,8 +105,11 @@ export default class PandocPlugin extends Plugin {
                 new Notice('Successfully exported via Pandoc to ' + outputFile);
             } else {
                 // Spawn Pandoc
+                const metadataFile = temp.path();
+                const metadataString = YAML.stringify(metadata);
+                await fs.promises.writeFile(metadataFile, metadataString);
                 const { error, command } = await pandoc(
-                    { file: 'STDIN', contents: html, format: 'html', title,
+                    { file: 'STDIN', contents: html, format: 'html', metadataFile,
                         pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex },
                     { file: outputFile, format }
                 );
