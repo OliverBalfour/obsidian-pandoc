@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 
-import { MarkdownRenderer, MarkdownView, Notice } from 'obsidian';
+import { FileSystemAdapter, MarkdownRenderer, MarkdownView, Notice } from 'obsidian';
 
 import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
@@ -21,7 +21,7 @@ import { outputFormats } from 'pandoc';
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
 export default async function render (settings: PandocPluginSettings, view: MarkdownView, inputFile: string, vaultBasePath: string,
-    outputFormat: string, parentFiles: string[] = []): Promise<{ html: string, metadata: { [index: string]: string } }>
+    outputFormat: string, parentFiles: string[] = [], adapter: FileSystemAdapter): Promise<{ html: string, metadata: { [index: string]: string } }>
 {
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const markdown = view.data;
@@ -32,7 +32,7 @@ export default async function render (settings: PandocPluginSettings, view: Mark
 
     // Post-process the HTML in-place
     await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat,
-        parentFiles, await mermaidCSS(settings, vaultBasePath));
+        parentFiles, await mermaidCSS(settings, vaultBasePath), adapter);
     let html = wrapper.innerHTML;
     document.body.removeChild(wrapper);
 
@@ -157,7 +157,7 @@ async function standaloneHTML(settings: PandocPluginSettings, html: string, titl
 }
 
 async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement,
-    vaultBasePath: string, outputFormat: string, parentFiles: string[] = [], css: string = '')
+    vaultBasePath: string, outputFormat: string, parentFiles: string[] = [], css: string = '', adapter: FileSystemAdapter)
 {
     const dirname = path.dirname(inputFile);
     // Fix <span src="image.png">
@@ -169,19 +169,20 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
         let src = span.getAttribute('src');
         if (src) {
-            const file = path.join(dirname, src + '.md');
+            const file = adapter.getFullPath(src + '.md');
             try {
                 if (parentFiles.indexOf(file) !== -1) {
                     // We've got an infinite recursion on our hands
                     // We should replace the embed with a wikilink
                     // Then our link processing happens afterwards
-                    span.outerHTML = `<a href="${src+'.md'}">${span.innerHTML}</a>`;
+                    span.outerHTML = `<a href="${file}">${span.innerHTML}</a>`;
                 } else {
-                    const markdown = (await fs.promises.readFile(file)).toString();
+                    // TODO: use app.metadataCache.getFirstLinkpathDest(src, currentSubfolder);
+                    const markdown = await adapter.read(src);
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
                     // TODO: because of this cast, embedded notes won't be able to handle complex plugins (eg DataView)
-                    const html = await render(settings, { data: markdown } as MarkdownView, file, vaultBasePath, outputFormat, newParentFiles);
+                    const html = await render(settings, { data: markdown } as MarkdownView, file, vaultBasePath, outputFormat, newParentFiles, adapter);
                     span.outerHTML = html.html;
                 }
             } catch (e) {
@@ -220,11 +221,12 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     // Fix <img src="app://obsidian.md/image.png">
     // Note: this will throw errors when Obsidian tries to load images with a (now invalid) src
     // These errors can be safely ignored
-    // Note: we leave HTML links intact (so they're relative image paths) and don't touch the src
-    //  if we're processing an embedded note to avoid double-handling (and thus mangling) the src
-    if (outputFormat !== 'html' && parentFiles.length === 0) {
+    if (outputFormat !== 'html') {
         for (let img of Array.from(wrapper.querySelectorAll('img'))) {
-            img.src = img.src.startsWith(prefix) ? path.join(dirname, img.src.substring(prefix.length)) : img.src;
+            if (img.src.startsWith(prefix) && img.getAttribute('data-touched') !== 'true') {
+                img.src = adapter.getFullPath(img.src.substring(prefix.length));
+                img.setAttribute('data-touched', 'true');
+            }
         }
     }
     // Remove YAML frontmatter from the output if desired

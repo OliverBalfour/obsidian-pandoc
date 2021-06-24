@@ -94,7 +94,8 @@ export default class PandocPlugin extends Plugin {
 
         try {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-            const { html, metadata } = await render(this.settings, view, inputFile, this.vaultBasePath(), format);
+            const adapter = this.app.vault.adapter as FileSystemAdapter;
+            const { html, metadata } = await render(this.settings, view, inputFile, this.vaultBasePath(), format, [], adapter);
 
             let outputFile: string = replaceFileExtension(inputFile, extension);
             if (this.settings.outputFolder) {
