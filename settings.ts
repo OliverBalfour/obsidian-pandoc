@@ -123,5 +123,17 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                     this.plugin.settings.pdflatex = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName("Extra Pandoc arguments")
+            .setDesc("Add extra command line arguments so you can use templates or bibliographies. Newlines are turned into spaces")
+            .addTextArea(text => text
+                .setPlaceholder('Example: --bibliography "Zotero Exports\My Library.json" or --template letter')
+                .setValue(this.plugin.settings.extraArguments)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.extraArguments = value;
+                    await this.plugin.saveSettings();
+                })
+                .inputEl.style.minHeight='150px');
     }
 }

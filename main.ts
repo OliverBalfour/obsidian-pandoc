@@ -114,7 +114,8 @@ export default class PandocPlugin extends Plugin {
                 const { error, command } = await pandoc(
                     { file: 'STDIN', contents: html, format: 'html', metadataFile,
                         pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex },
-                    { file: outputFile, format }
+                    { file: outputFile, format },
+                    this.settings.extraArguments.split('\n')
                 );
                 // Never give warnings for plain-text exports
                 if (error.length && format !== 'plain') {
@@ -125,6 +126,7 @@ export default class PandocPlugin extends Plugin {
                 }
                 if (this.settings.showCLICommands) {
                     new Notice('Pandoc command: ' + command, 10000);
+                    console.log(command);
                 }
             }
         } catch (e) {

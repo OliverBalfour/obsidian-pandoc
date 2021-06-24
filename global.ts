@@ -26,6 +26,8 @@ export interface PandocPluginSettings {
     // Output folder - if unspecified exports are saved next to where they were exported from
     // The path is absolute
     outputFolder: string | null,
+    // Extra CLI arguments for Pandoc to support features we don't have a UI for yet
+    extraArguments: string,
 }
 
 export const DEFAULT_SETTINGS: PandocPluginSettings = {
@@ -40,6 +42,7 @@ export const DEFAULT_SETTINGS: PandocPluginSettings = {
     pandoc: null,
     pdflatex: null,
     outputFolder: null,
+    extraArguments: '',
 }
 
 export function replaceFileExtension(file: string, ext: string): string {
