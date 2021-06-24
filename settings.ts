@@ -66,16 +66,6 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-                new Setting(containerEl)
-            .setName("Inject entire 3rd party theme CSS file (HTML output only)")
-            .setDesc("The output might look better, but the files can become *much* bigger. Don't enable unless you need to.")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.injectThemeCSS)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.injectThemeCSS = value;
-                    await this.plugin.saveSettings();
-                }));
-
         new Setting(containerEl)
             .setName("Internal link processing")
             .setDesc("This controls how [[wiki-links]] are formatted. Doesn't affect HTML output.")

@@ -117,15 +117,7 @@ async function getThemeCSS(settings: PandocPluginSettings, vaultBasePath: string
         let light = await currentThemeIsLight(vaultBasePath, config);
         if (settings.injectAppCSS === 'light') light = true;
         if (settings.injectAppCSS === 'dark') light = false;
-        let css;
-        try {
-            css = settings.injectThemeCSS
-              ? await fs.promises.readFile(path.join(vaultBasePath, '.obsidian', 'themes', config.cssTheme + '.css'))
-              : '';
-        } catch (e) {
-            console.error("Pandoc plugin couldn't load theme CSS. Error: " + e.toString());
-        }
-        return appCSS(light) + css.toString();
+        return appCSS(light);
     } catch (e) {
         return '';
     }

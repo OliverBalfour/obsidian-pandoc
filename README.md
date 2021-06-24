@@ -28,6 +28,7 @@ How it works:
 
 * Slideshows: use `---` by itself on a line between slides
 * Using a custom title: put a `title: "My title"` field in the [YAML frontmatter](https://help.obsidian.md/Advanced+topics/YAML+front+matter) and it will use that instead of the filename
+* Adding an author, subtitle, date, etc: use YAML as above, see the Pandoc documentation for reference.
 * Writing books: you can stitch chapters together with Obsidian's note embed syntax. Think `![[Chapter1]] ![[Chapter2]] ...` - the output looks seamless.
 * If you want tags in your source document but not the output, you can put them in the YAML frontmatter
 
@@ -46,10 +47,8 @@ How it works:
 
 This is a non-exhaustive list of issues I've found in testing. Most export formats work with most formatting, apart from the exceptions below.
 
+* Exports with embedded notes don't handle complex plugin formatting (eg DataView)
 * Reveal.js: complex equations don't work, syntax highlighting doesn't work, footnotes look weird
 * LaTeX: foreign images don't work
 * PowerPoint: Mermaid.js diagrams don't appear
 * Word, OpenDocument: very complex equations sometimes have ? symbols
-* Embedded PDFs like `![[file.pdf#page=2]` display as `file.pdf > page=2` when they should be stripped
-* Many Pandoc supported output formats aren't yet available (if there are any you'd like to see, just ping me! I'll add most of them soon)
-* The settings tab has a *lot* of settings, most of which people won't care about (eg the 3 CSS injection toggle settings should be one at most)
