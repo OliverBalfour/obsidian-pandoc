@@ -13,6 +13,7 @@ import * as YAML from 'yaml';
 
 import { FileSystemAdapter, MarkdownRenderer, MarkdownView, Notice } from 'obsidian';
 
+import PandocPlugin from './main';
 import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
 import appCSS, { variables as appCSSVariables } from './styles/app-css';
@@ -20,8 +21,9 @@ import { outputFormats } from 'pandoc';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
-export default async function render (settings: PandocPluginSettings, view: MarkdownView, inputFile: string, vaultBasePath: string,
-    outputFormat: string, parentFiles: string[] = [], adapter: FileSystemAdapter): Promise<{ html: string, metadata: { [index: string]: string } }>
+export default async function render (plugin: PandocPlugin, view: MarkdownView,
+    inputFile: string, outputFormat: string, parentFiles: string[] = []):
+    Promise<{ html: string, metadata: { [index: string]: string } }>
 {
     // Use Obsidian's markdown renderer to render to a hidden <div>
     const markdown = view.data;
@@ -31,8 +33,8 @@ export default async function render (settings: PandocPluginSettings, view: Mark
     await MarkdownRenderer.renderMarkdown(markdown, wrapper, path.dirname(inputFile), view);
 
     // Post-process the HTML in-place
-    await postProcessRenderedHTML(settings, inputFile, wrapper, vaultBasePath, outputFormat,
-        parentFiles, await mermaidCSS(settings, vaultBasePath), adapter);
+    await postProcessRenderedHTML(plugin, inputFile, wrapper, outputFormat,
+        parentFiles, await mermaidCSS(plugin.settings, plugin.vaultBasePath()));
     let html = wrapper.innerHTML;
     document.body.removeChild(wrapper);
 
@@ -40,7 +42,7 @@ export default async function render (settings: PandocPluginSettings, view: Mark
     const metadata = getYAMLMetadata(markdown);
     metadata.title ??= fileBaseName(inputFile);
     if (parentFiles.length === 0) {
-        html = await standaloneHTML(settings, html, metadata.title, vaultBasePath);
+        html = await standaloneHTML(plugin.settings, html, metadata.title, plugin.vaultBasePath());
     }
 
     return { html, metadata };
@@ -156,10 +158,12 @@ async function standaloneHTML(settings: PandocPluginSettings, html: string, titl
         `</html>`;
 }
 
-async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile: string, wrapper: HTMLElement,
-    vaultBasePath: string, outputFormat: string, parentFiles: string[] = [], css: string = '', adapter: FileSystemAdapter)
+async function postProcessRenderedHTML(plugin: PandocPlugin, inputFile: string, wrapper: HTMLElement,
+    outputFormat: string, parentFiles: string[] = [], css: string = '')
 {
     const dirname = path.dirname(inputFile);
+    const adapter = plugin.app.vault.adapter as FileSystemAdapter;
+    const settings = plugin.settings;
     // Fix <span src="image.png">
     for (let span of Array.from(wrapper.querySelectorAll('span[src$=".png"], span[src$=".jpg"], span[src$=".gif"], span[src$=".jpeg"]'))) {
         span.innerHTML = '';
@@ -169,20 +173,20 @@ async function postProcessRenderedHTML(settings: PandocPluginSettings, inputFile
     for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
         let src = span.getAttribute('src');
         if (src) {
-            const file = adapter.getFullPath(src + '.md');
+            const subfolder = inputFile.substring(adapter.getBasePath().length);  // TODO: this is messy
+            const file = plugin.app.metadataCache.getFirstLinkpathDest(src, subfolder);
             try {
-                if (parentFiles.indexOf(file) !== -1) {
+                if (parentFiles.indexOf(file.path) !== -1) {
                     // We've got an infinite recursion on our hands
                     // We should replace the embed with a wikilink
                     // Then our link processing happens afterwards
                     span.outerHTML = `<a href="${file}">${span.innerHTML}</a>`;
                 } else {
-                    // TODO: use app.metadataCache.getFirstLinkpathDest(src, currentSubfolder);
-                    const markdown = await adapter.read(src);
+                    const markdown = await adapter.read(file.path);
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
                     // TODO: because of this cast, embedded notes won't be able to handle complex plugins (eg DataView)
-                    const html = await render(settings, { data: markdown } as MarkdownView, file, vaultBasePath, outputFormat, newParentFiles, adapter);
+                    const html = await render(plugin, { data: markdown } as MarkdownView, file.path, outputFormat, newParentFiles);
                     span.outerHTML = html.html;
                 }
             } catch (e) {
