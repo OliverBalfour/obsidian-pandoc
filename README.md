@@ -12,7 +12,7 @@ This lets you **write presentations**, **draft books**, **make webpages**, and *
 
 How to install:
 1. [Install Pandoc](https://pandoc.org/installing.html) if you have not already (without Pandoc only the HTML export works)
-2. Download this repository as a zip file, and unzip it into your `vault/.obsidian/plugins` folder
+2. Download the [latest release](https://github.com/OliverBalfour/obsidian-pandoc/releases) as a zip file, and unzip it into your `vault/.obsidian/plugins` folder
 3. Enable it in the community plugins settings menu
 
 Once the plugin is in better shape, I will make it installable by browsing the community plugins list. For now it's a little tedious.
