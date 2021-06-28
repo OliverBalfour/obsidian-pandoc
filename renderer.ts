@@ -220,6 +220,8 @@ async function postProcessRenderedHTML(plugin: PandocPlugin, inputFile: string, 
             a.outerHTML = '';
         } else if (settings.linkStrippingBehaviour === 'text') {
             a.outerHTML = a.innerText;
+        } else if (settings.linkStrippingBehaviour === 'unchanged') {
+            a.outerHTML = '[[' + a.outerHTML + ']]';
         }
     }
     // Fix <img src="app://obsidian.md/image.png">

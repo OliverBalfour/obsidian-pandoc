@@ -74,10 +74,11 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
                     "text": "Turn into text",
                     "link": "Leave as links",
                     "strip": "Remove links",
+                    "unchanged": "Leave unchanged",
                 })
                 .setValue(this.plugin.settings.linkStrippingBehaviour)
                 .onChange(async (value: string) => {
-                    this.plugin.settings.linkStrippingBehaviour = value as 'strip' | 'text' | 'link';
+                    this.plugin.settings.linkStrippingBehaviour = value as 'strip' | 'text' | 'link' | 'unchanged';
                     await this.plugin.saveSettings();
                 }));
 
