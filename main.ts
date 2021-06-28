@@ -144,8 +144,7 @@ export default class PandocPlugin extends Plugin {
                 }
             }
 
-            // Never give warnings for plain-text exports
-            if (error.length && format !== 'plain') {
+            if (error.length) {
                 new Notice('Exported via Pandoc to ' + outputFile + ' with warnings');
                 new Notice('Pandoc warnings:' + error, 10000);
             } else {

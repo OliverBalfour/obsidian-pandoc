@@ -36,8 +36,8 @@ export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 // Subset of output formats, will add more later
 // Note: you need a `-o -` in the command to output odt, docx, epub or pdf output (presumably as they are binary formats or something)
 export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
-  | 'html' | 'ipynb' | 'pdf' | 'json' | 'latex' | 'odt' | 'plain' | 'pptx' | 'revealjs'
-  | 'beamer' | 'rtf';
+  | 'html' | 'pdf' | 'json' | 'latex' | 'odt' | 'pptx' | 'revealjs'
+  | 'beamer' | 'rtf' | 'docuwiki';
 
 // List of [pretty name, pandoc format name, file extension, shortened pretty name]
 export const outputFormats = [
@@ -47,14 +47,13 @@ export const outputFormats = [
     ['HTML (without Pandoc)','html','html', 'HTML'],
     ['LaTeX', 'latex', 'tex', 'LaTeX'],
     ['OpenDocument (odt)', 'odt', 'odt', 'OpenDocument'],
-    ['Plain Text (txt)', 'plain', 'txt', 'plain text'],
     ['PowerPoint (pptx)', 'pptx', 'pptx', 'PowerPoint'],
     ['ePub', 'epub', 'epub', 'ePub'],
     ['PDF (via LaTeX)', 'pdf', 'pdf', 'PDF'],
-    ['Jupyter Notebook', 'ipynb', 'ipynb', 'Jupyter'],
     ['Reveal.js Slides', 'revealjs', 'reveal.html', 'Reveal.js'],
     ['Beamer Slides', 'beamer', 'beamer.tex', 'Beamer'],
     ['reStructured Text (RST)', 'rst', 'rst', 'RST'],
+    ['DokuWiki', 'dokuwiki', 'txt', 'DokuWiki'],
 ];
 
 export interface PandocInput {
