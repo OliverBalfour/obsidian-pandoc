@@ -37,7 +37,7 @@ export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 // Note: you need a `-o -` in the command to output odt, docx, epub or pdf output (presumably as they are binary formats or something)
 export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
   | 'html' | 'pdf' | 'json' | 'latex' | 'odt' | 'pptx' | 'revealjs'
-  | 'beamer' | 'rtf' | 'docuwiki';
+  | 'beamer' | 'rtf' | 'docuwiki' | 'mediawiki';
 
 // List of [pretty name, pandoc format name, file extension, shortened pretty name]
 export const outputFormats = [
@@ -54,6 +54,7 @@ export const outputFormats = [
     ['Beamer Slides', 'beamer', 'beamer.tex', 'Beamer'],
     ['reStructured Text (RST)', 'rst', 'rst', 'RST'],
     ['DokuWiki', 'dokuwiki', 'txt', 'DokuWiki'],
+    ['MediaWiki', 'mediawiki', 'mediawiki', 'MediaWiki'],
 ];
 
 export interface PandocInput {
