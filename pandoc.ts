@@ -49,7 +49,7 @@ export const outputFormats = [
     ['OpenDocument (odt)', 'odt', 'odt', 'OpenDocument'],
     ['PowerPoint (pptx)', 'pptx', 'pptx', 'PowerPoint'],
     ['ePub', 'epub', 'epub', 'ePub'],
-    ['PDF (via LaTeX)', 'pdf', 'pdf', 'PDF'],
+    ['PDF (via LaTeX)', 'latex', 'pdf', 'PDF'],
     ['Reveal.js Slides', 'revealjs', 'reveal.html', 'Reveal.js'],
     ['Beamer Slides', 'beamer', 'beamer.tex', 'Beamer'],
     ['reStructured Text (RST)', 'rst', 'rst', 'RST'],
