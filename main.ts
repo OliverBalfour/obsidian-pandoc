@@ -119,7 +119,8 @@ export default class PandocPlugin extends Plugin {
                         const result = await pandoc(
                             {
                                 file: 'STDIN', contents: html, format: 'html', metadataFile,
-                                pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex
+                                pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex,
+                                directory: path.dirname(inputFile),
                             },
                             { file: outputFile, format },
                             this.settings.extraArguments.split('\n')
@@ -133,7 +134,8 @@ export default class PandocPlugin extends Plugin {
                     const result = await pandoc(
                         {
                             file: inputFile, format: 'markdown',
-                            pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex
+                            pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex,
+                            directory: path.dirname(inputFile),
                         },
                         { file: outputFile, format },
                         this.settings.extraArguments.split('\n')

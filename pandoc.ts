@@ -64,6 +64,7 @@ export interface PandocInput {
     metadataFile?: string,  // path to YAML file
     pandoc?: string, // optional path to Pandoc if it's not in the current PATH variable
     pdflatex?: string, // ditto for pdflatex
+    directory: AbsoluteFilePath, // The working directory (where the original source file is)
 }
 
 export interface PandocOutput {
@@ -158,7 +159,7 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
                 env.PATH += ":";
             env.PATH += path.dirname(input.pdflatex);
         }
-        pandoc = spawn(input.pandoc || 'pandoc', args, { env: process.env });
+        pandoc = spawn(input.pandoc || 'pandoc', args, { env: process.env, cwd: input.directory });
 
         if (stdin) {
             // TODO: strip some unicode characters but not others
