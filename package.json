@@ -23,6 +23,7 @@
   "dependencies": {
     "@types/temp": "^0.9.0",
     "lookpath": "^1.2.0",
+    "js-base64": "^3.7.2",
     "temp": "^0.9.4",
     "yaml": "^2.0.0-4"
   }
