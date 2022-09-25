@@ -10,6 +10,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as YAML from 'yaml';
+import { Base64 } from 'js-base64';
 
 import { FileSystemAdapter, MarkdownRenderer, MarkdownView, Notice } from 'obsidian';
 
@@ -267,7 +268,7 @@ function convertSVGToPNG(svg: SVGSVGElement, scale: number = 1): Promise<HTMLIma
     canvas.height = Math.ceil(svg.height.baseVal.value * scale);
     const ctx = canvas.getContext('2d');
     var svgImg = new Image;
-    svgImg.src = "data:image/svg+xml;base64," + btoa(svg.outerHTML);
+    svgImg.src = "data:image/svg+xml;base64," + Base64.encode(svg.outerHTML);
     return new Promise((resolve, reject) => {
         svgImg.onload = () => {
             ctx.drawImage(svgImg, 0, 0, canvas.width, canvas.height);
