@@ -1,3 +1,15 @@
+# 0.4.1 (Sun Sep 25 2022)
+
+#### 🐛 Bug Fix
+
+- Fix issue #67 [#130](https://github.com/OliverBalfour/obsidian-pandoc/pull/130) ([@frogkind](https://github.com/frogkind))
+
+#### Authors: 1
+
+- Chuang Zheng ([@frogkind](https://github.com/frogkind))
+
+---
+
 # 0.3.0 (Sun Sep 25 2022)
 
 #### 🚀 Enhancement
