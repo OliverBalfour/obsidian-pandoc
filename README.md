@@ -12,7 +12,9 @@ Note: this plugin is in beta, and there are often minor formatting issues. Make 
 
 ## [Installation](https://github.com/OliverBalfour/obsidian-pandoc/wiki/Installation)
 
-(Installation instructions are on the wiki, use the above link)
+Installation instructions are on the wiki, use the above link
+
+Developer setup instructions are in [development.md](./development.md)
 
 ## Basic usage
 * Press Ctrl+P/Cmd+P to show the command palette
