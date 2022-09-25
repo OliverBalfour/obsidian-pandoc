@@ -1,0 +1,29 @@
+# Based on https://github.com/hipstersmoothie/obsidian-plugin-prettier/blob/main/.github/workflows/main.yml
+name: Release
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Prepare repository
+        run: git fetch --unshallow --tags
+
+      - name: Install modules
+        run: yarn
+
+      - name: Run build
+        run: yarn run build
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+        run: |
+          npm run release
