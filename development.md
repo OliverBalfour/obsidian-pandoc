@@ -1,28 +1,19 @@
 
-### Releasing new releases
+### Setup
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments.
-- Publish the release.
+* `cd vault/.obsidian/plugins`
+* If you already have the plugin, copy the `obsidian-pandoc/data.json` file somewhere safe and delete the plugin
+* `git clone https://github.com/OliverBalfour/obsidian-pandoc` (or clone it elsewhere and make a symlink here)
+* Copy the data file back in
+* `cd obsidian-pandoc`
+* `npm install`
 
-### Adding your plugin to the community plugin list
+### Development
 
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-### How to use
-
-- Clone this repo.
-- `npm i` or `yarn` to install dependencies
-- `npm run dev` to start compilation in watch mode.
-
-### Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-### API Documentation
-
-See https://github.com/obsidianmd/obsidian-api
+Every time you want to edit the plugin:
+* `npm run dev` (keep this running until you're done)
+* Commit+push your changes like normal (don't worry about version numbers)
+* Make a PR and add the patch/minor/major label depending on how big the change is
+* When it's reviewed and merged, a GitHub Actions workflow will
+  1. Automatically increment all the version numbers in a new commit
+  2. Build and publish a release
