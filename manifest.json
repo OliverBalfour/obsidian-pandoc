@@ -1,7 +1,7 @@
 {
   "id": "obsidian-pandoc",
   "name": "Pandoc Plugin",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "minAppVersion": "0.12.5",
   "description": "This is a Pandoc export plugin for Obsidian. It provides commands to export to formats like DOCX, ePub and PDF.",
   "author": "Oliver Balfour",
