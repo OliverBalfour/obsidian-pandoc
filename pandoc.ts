@@ -44,6 +44,7 @@ export const outputFormats = [
     ['AsciiDoc (adoc)', 'asciidoc', 'adoc', 'AsciiDoc'],
     ['Word Document (docx)', 'docx', 'docx', 'Word'],
     ['Pandoc Markdown', 'markdown', 'pandoc.md', 'markdown'],  // X.md -> X.pandoc.md to avoid conflict
+    ['Multi-Markdown', 'markdown_mmd', 'mmd', 'MultiMarkdown'],
     ['HTML (without Pandoc)','html','html', 'HTML'],
     ['LaTeX', 'latex', 'tex', 'LaTeX'],
     ['OpenDocument (odt)', 'odt', 'odt', 'OpenDocument'],
