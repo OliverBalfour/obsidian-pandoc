@@ -72,6 +72,11 @@ export interface PandocOutput {
     format?: OutputFormat,  // -t/--to format, inferred if blank
 }
 
+export interface PandocMetadata {
+    type: string,
+    text: string
+}
+
 export function needsLaTeX(format: OutputFormat): boolean {
     return format === 'pdf';
 }
