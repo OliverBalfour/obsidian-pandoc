@@ -18,7 +18,7 @@ import PandocPlugin from './main';
 import { PandocPluginSettings } from './global';
 import mathJaxFontCSS from './styles/mathjax-css';
 import appCSS, { variables as appCSSVariables } from './styles/app-css';
-import { outputFormats } from 'pandoc';
+import { outputFormats, PandocMetadata } from 'pandoc';
 
 // Note: parentFiles is for internal use (to prevent recursively embedded notes)
 // inputFile must be an absolute file path
@@ -60,7 +60,13 @@ function getYAMLMetadata(markdown: string) {
     if (markdown.startsWith('---')) {
         const trailing = markdown.substring(3);
         const frontmatter = trailing.substring(0, trailing.indexOf('---')).trim();
-        return YAML.parse(frontmatter);
+        const metadata = YAML.parse(frontmatter);
+        if(Array.isArray(metadata.title)){
+            let title = metadata.title.find((item: PandocMetadata) => item.type == 'main')
+            let subtitle = metadata.title.find((item: PandocMetadata) => item.type == 'subtitle');
+            metadata.title = subtitle ? `${title?.text}: ${subtitle?.text}` : title?.text
+        }
+        return metadata;
     }
     return {};
 }
