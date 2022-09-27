@@ -35,8 +35,8 @@ export const inputExtensions = ['md', 'docx', 'csv', 'html', 'tex', 'odt'];
 
 // Subset of output formats, will add more later
 // Note: you need a `-o -` in the command to output odt, docx, epub or pdf output (presumably as they are binary formats or something)
-export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark_x' | 'docx' | 'epub'
-  | 'html' | 'pdf' | 'json' | 'latex' | 'odt' | 'pptx' | 'revealjs'
+export type OutputFormat = 'asciidoc' | 'beamer' | 'commonmark' | 'commonmark_x' | 'docx' | 'epub'
+  | 'gfm' | 'html' | 'pdf' | 'json' | 'latex' | 'odt' | 'pptx' | 'revealjs'
   | 'beamer' | 'rtf' | 'docuwiki' | 'mediawiki';
 
 // List of [pretty name, pandoc format name, file extension, shortened pretty name]
@@ -44,6 +44,8 @@ export const outputFormats = [
     ['AsciiDoc (adoc)', 'asciidoc', 'adoc', 'AsciiDoc'],
     ['Word Document (docx)', 'docx', 'docx', 'Word'],
     ['Pandoc Markdown', 'markdown', 'pandoc.md', 'markdown'],  // X.md -> X.pandoc.md to avoid conflict
+    ['CommonMark', 'commonmark', 'commonmark.md', 'CommonMark'],  // X.md -> X.pandoc.md to avoid conflict
+    ['GitHub-flavored Markdown', 'gfm', 'gfm.md', 'GFM'],  // X.md -> X.pandoc.md to avoid conflict
     ['HTML (without Pandoc)','html','html', 'HTML'],
     ['LaTeX', 'latex', 'tex', 'LaTeX'],
     ['OpenDocument (odt)', 'odt', 'odt', 'OpenDocument'],
