@@ -110,18 +110,8 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
     // Construct the Pandoc arguments list
     let args: string[] = [];
 
-    /* fix by Dirk Roorda to let Pandoc follow relative links
-     * with respect to the directory that the input source file is in.
-     * This fixes the cases where the plugin fails to include images.
-     */
     args.push('--resource-path')
     args.push(path.dirname(input.file))
-    /* end of fix by Dirk Roorda
-     * N.B. This fix is not yet tested through building the plugin.
-     * I have applied this fix in the my local
-     * .obsidian/plugins/obsidian-pandoc/main.js
-     * and that worked.
-     */
 
     if (input.format) {
         args.push('--from');
