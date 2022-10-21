@@ -111,6 +111,9 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
     // Construct the Pandoc arguments list
     let args: string[] = [];
 
+    args.push('--resource-path')
+    args.push(path.dirname(input.file))
+
     if (input.format) {
         args.push('--from');
         args.push(input.format);
