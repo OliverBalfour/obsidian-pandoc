@@ -98,7 +98,7 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Export folder")
-            .setDesc("Absolute path to an export folder, like 'C:\Users\Example\Documents' or '/home/user/zettelkasten'. If left blank, files are saved next to where they were exported from.")
+            .setDesc("Absolute path to an export folder, like 'C:\\Users\\Example\\Documents' or '/home/user/zettelkasten'. If left blank, files are saved next to where they were exported from.")
             .addText(text => text
                 .setPlaceholder('same as target')
                 .setValue(this.plugin.settings.outputFolder)
@@ -143,7 +143,7 @@ export default class PandocPluginSettingTab extends PluginSettingTab {
             .setName("Extra Pandoc arguments")
             .setDesc("Add extra command line arguments so you can use templates or bibliographies. Newlines are turned into spaces")
             .addTextArea(text => text
-                .setPlaceholder('Example: --bibliography "Zotero Exports\My Library.json" or --template letter')
+                .setPlaceholder('Example: --bibliography "Zotero Exports\\My Library.json" or --template letter')
                 .setValue(this.plugin.settings.extraArguments)
                 .onChange(async (value: string) => {
                     this.plugin.settings.extraArguments = value;
