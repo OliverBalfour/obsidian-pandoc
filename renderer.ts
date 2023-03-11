@@ -174,8 +174,8 @@ async function postProcessRenderedHTML(plugin: PandocPlugin, inputFile: string, 
     for (let span of Array.from(wrapper.querySelectorAll('span.internal-embed'))) {
         let src = span.getAttribute('src');
         if (src) {
-            const subfolder = inputFile.substring(adapter.getBasePath().length);  // TODO: this is messy
-            const file = plugin.app.metadataCache.getFirstLinkpathDest(src, subfolder);
+            let [file_name, heading] = src.split('#');
+            const file = plugin.app.metadataCache.getFirstLinkpathDest(file_name, "");
             try {
                 if (parentFiles.indexOf(file.path) !== -1) {
                     // We've got an infinite recursion on our hands
@@ -183,7 +183,20 @@ async function postProcessRenderedHTML(plugin: PandocPlugin, inputFile: string, 
                     // Then our link processing happens afterwards
                     span.outerHTML = `<a href="${file}">${span.innerHTML}</a>`;
                 } else {
-                    const markdown = await adapter.read(file.path);
+                    let markdown = await adapter.read(file.path);
+                    if (heading) { 
+                        heading = heading.split(" ").join("[ \|]+")
+                        // Get the header level
+                        let regex = new RegExp(`(#*) (?:\\[*${heading}\\]*[ ]*\\n)`);
+                        let res = markdown.match(regex)
+                        if (!res || res.length <= 1) break;
+                        const h_level = res[1].length;
+                        // Get everything until a header with the same or lower level appears in the text
+                        regex = new RegExp(`#* (?:\\[*${heading}\\]*[ ]*\\n)((?:.|\\n(?!#{1,${h_level}} ))*)`);
+                        res = markdown.match(regex);
+                        if (!res || res.length <= 1) break;
+                        markdown = res[1];
+                    }
                     const newParentFiles = [...parentFiles];
                     newParentFiles.push(inputFile);
                     // TODO: because of this cast, embedded notes won't be able to handle complex plugins (eg DataView)
