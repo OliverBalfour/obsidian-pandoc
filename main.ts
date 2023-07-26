@@ -10,7 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Notice, Plugin, FileSystemAdapter, MarkdownView } from 'obsidian';
+import { Notice, Plugin, FileSystemAdapter, MarkdownView, normalizePath } from 'obsidian';
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX, needsPandoc } from './pandoc';
 import * as YAML from 'yaml';
@@ -58,6 +58,11 @@ export default class PandocPlugin extends Plugin {
         return (this.app.vault.adapter as FileSystemAdapter).getBasePath();
     }
 
+    pluginPath(): string {
+        // returns a normalised path
+        return normalizePath("/.obsidian/plugins/obsidian-pandoc");
+    }
+
     getCurrentFile(): string | null {
         const fileData = this.app.workspace.getActiveFile();
         if (!fileData) return null;
@@ -102,14 +107,19 @@ export default class PandocPlugin extends Plugin {
         try {
             let error, command;
 
+            const { adapter } = (this.app.vault);
+            
+            const lf = (adapter as FileSystemAdapter).getFullPath(this.pluginPath() + '/lua/double_dollar_align.lua');
+            const extraArgs = [`--lua-filter=${lf}`,
+                ].concat(this.settings.extraArguments.split('\n'));
+
             switch (this.settings.exportFrom) {
                 case 'html': {
                     const { html, metadata } = await render(this, view, inputFile, format);
-
                     if (format === 'html') {
                         // Write to HTML file
                         await fs.promises.writeFile(outputFile, html);
-                        new Notice('Successfully exported via Pandoc to ' + outputFile);
+                        new Notice('Successfully exported to ' + outputFile);
                         return;
                     } else {
                         // Spawn Pandoc
@@ -118,12 +128,12 @@ export default class PandocPlugin extends Plugin {
                         await fs.promises.writeFile(metadataFile, metadataString);
                         const result = await pandoc(
                             {
-                                file: 'STDIN', contents: html, format: 'html', metadataFile,
+                                file: 'STDIN', contents: html.replace("<mjx-","<"), format: 'html', metadataFile,
                                 pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex,
                                 directory: path.dirname(inputFile),
                             },
                             { file: outputFile, format },
-                            this.settings.extraArguments.split('\n')
+                            extraArgs
                         );
                         error = result.error;
                         command = result.command;
@@ -138,7 +148,7 @@ export default class PandocPlugin extends Plugin {
                             directory: path.dirname(inputFile),
                         },
                         { file: outputFile, format },
-                        this.settings.extraArguments.split('\n')
+                        extraArgs
                     );
                     error = result.error;
                     command = result.command;
@@ -153,7 +163,7 @@ export default class PandocPlugin extends Plugin {
                 new Notice('Successfully exported via Pandoc to ' + outputFile);
             }
             if (this.settings.showCLICommands) {
-                new Notice('Pandoc command: ' + command, 10000);
+                new Notice('Pandoc command: ' + command, 20000);
                 console.log(command);
             }
 
