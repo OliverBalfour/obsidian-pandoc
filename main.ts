@@ -107,9 +107,8 @@ export default class PandocPlugin extends Plugin {
         try {
             let error, command;
 
-            const extraArgs = [`--lua-filter=/${this.pluginPath()}/lua/mdalign.lua`
+            const extraArgs = [`--lua-filter=/${this.pluginPath()}/lua/double_dollar_align.lua`,
                 ].concat(this.settings.extraArguments.split('\n'));
-
 
             switch (this.settings.exportFrom) {
                 case 'html': {
@@ -118,7 +117,7 @@ export default class PandocPlugin extends Plugin {
                     if (format === 'html') {
                         // Write to HTML file
                         await fs.promises.writeFile(outputFile, html);
-                        new Notice('Successfully exported via Pandoc to ' + outputFile);
+                        new Notice('Successfully exported to ' + outputFile);
                         return;
                     } else {
                         // Spawn Pandoc
