@@ -129,8 +129,9 @@ export const pandoc = async (input: PandocInput, output: PandocOutput, extraPara
         args.push('-');
     }
     // // Support Unicode in the PDF output if XeLaTeX is installed
-    if (output.format === 'pdf' && await lookpath('xelatex'))
+    if (output.format === 'pdf' && await lookpath('xelatex')){
         args.push('--pdf-engine=xelatex');
+    }
     if (!stdin) {
         args.push(input.file);
     }

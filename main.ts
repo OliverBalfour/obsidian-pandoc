@@ -10,7 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Notice, Plugin, FileSystemAdapter, MarkdownView } from 'obsidian';
+import { Notice, Plugin, FileSystemAdapter, MarkdownView, normalizePath } from 'obsidian';
 import { lookpath } from 'lookpath';
 import { pandoc, inputExtensions, outputFormats, OutputFormat, needsLaTeX, needsPandoc } from './pandoc';
 import * as YAML from 'yaml';
@@ -58,6 +58,11 @@ export default class PandocPlugin extends Plugin {
         return (this.app.vault.adapter as FileSystemAdapter).getBasePath();
     }
 
+    pluginPath(): string {
+        // returns a normalised path
+        return normalizePath(this.vaultBasePath() + "/.obsidian/plugins/obsidian-pandoc");
+    }
+
     getCurrentFile(): string | null {
         const fileData = this.app.workspace.getActiveFile();
         if (!fileData) return null;
@@ -102,6 +107,10 @@ export default class PandocPlugin extends Plugin {
         try {
             let error, command;
 
+            const extraArgs = [`--lua-filter=/${this.pluginPath()}/lua/mdalign.lua`
+                ].concat(this.settings.extraArguments.split('\n'));
+
+
             switch (this.settings.exportFrom) {
                 case 'html': {
                     const { html, metadata } = await render(this, view, inputFile, format);
@@ -123,7 +132,7 @@ export default class PandocPlugin extends Plugin {
                                 directory: path.dirname(inputFile),
                             },
                             { file: outputFile, format },
-                            this.settings.extraArguments.split('\n')
+                            extraArgs
                         );
                         error = result.error;
                         command = result.command;
@@ -138,7 +147,7 @@ export default class PandocPlugin extends Plugin {
                             directory: path.dirname(inputFile),
                         },
                         { file: outputFile, format },
-                        this.settings.extraArguments.split('\n')
+                        extraArgs
                     );
                     error = result.error;
                     command = result.command;
@@ -153,7 +162,7 @@ export default class PandocPlugin extends Plugin {
                 new Notice('Successfully exported via Pandoc to ' + outputFile);
             }
             if (this.settings.showCLICommands) {
-                new Notice('Pandoc command: ' + command, 10000);
+                new Notice('Pandoc command: ' + command, 20000);
                 console.log(command);
             }
 
