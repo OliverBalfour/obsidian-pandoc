@@ -60,7 +60,7 @@ export default class PandocPlugin extends Plugin {
 
     pluginPath(): string {
         // returns a normalised path
-        return normalizePath(this.vaultBasePath() + "/.obsidian/plugins/obsidian-pandoc");
+        return normalizePath("/.obsidian/plugins/obsidian-pandoc");
     }
 
     getCurrentFile(): string | null {
@@ -107,13 +107,15 @@ export default class PandocPlugin extends Plugin {
         try {
             let error, command;
 
-            const extraArgs = [`--lua-filter=/${this.pluginPath()}/lua/double_dollar_align.lua`,
+            const { adapter } = (this.app.vault);
+            
+            const lf = (adapter as FileSystemAdapter).getFullPath(this.pluginPath() + '/lua/double_dollar_align.lua');
+            const extraArgs = [`--lua-filter=${lf}`,
                 ].concat(this.settings.extraArguments.split('\n'));
 
             switch (this.settings.exportFrom) {
                 case 'html': {
                     const { html, metadata } = await render(this, view, inputFile, format);
-
                     if (format === 'html') {
                         // Write to HTML file
                         await fs.promises.writeFile(outputFile, html);
@@ -126,7 +128,7 @@ export default class PandocPlugin extends Plugin {
                         await fs.promises.writeFile(metadataFile, metadataString);
                         const result = await pandoc(
                             {
-                                file: 'STDIN', contents: html, format: 'html', metadataFile,
+                                file: 'STDIN', contents: html.replace("<mjx-","<"), format: 'html', metadataFile,
                                 pandoc: this.settings.pandoc, pdflatex: this.settings.pdflatex,
                                 directory: path.dirname(inputFile),
                             },
